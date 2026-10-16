@@ -11,7 +11,7 @@ O projeto foi criado com o objetivo de praticar programação em Python e aplica
 
 ## Demonstração
 
-![Gráfico das funções afins](imagens/grafico.png)
+![Gráfico das funções afins](images/grafico.png)
 
 ## Funcionalidades
 
