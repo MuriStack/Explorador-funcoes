@@ -5,11 +5,36 @@ def calcular_funcao(x, a, b):
     return a * x + b
 
 
+def analisar_funcao(nome, a, b):
+    print(f"\n--- Análise da função {nome}(x) ---")
+    print(f"Coeficiente angular: {a}")
+    print(f"Coeficiente linear: {b}")
+
+    if a > 0:
+        print("Classificação: crescente")
+    elif a < 0:
+        print("Classificação: decrescente")
+    else:
+        print("Classificação: constante")
+
+    if a != 0:
+        raiz = -b / a
+        print(f"Raiz: {raiz}")
+    elif b == 0:
+        print("Raiz: todos os números reais")
+    else:
+        print("Raiz: não possui")
+
+
+
 af = float(input("Digite o coeficiente angular de f(x): "))
 bf = float(input("Digite o coeficiente linear de f(x): "))
 
 ag = float(input("Digite o coeficiente angular de g(x): "))
 bg = float(input("Digite o coeficiente linear de g(x): "))
+
+analisar_funcao("f", af, bf)
+analisar_funcao("g", ag, bg)
 
 inicio = int(input("Onde o intervalo deve começar? "))
 fim = int(input("Onde o intervalo deve terminar? "))
