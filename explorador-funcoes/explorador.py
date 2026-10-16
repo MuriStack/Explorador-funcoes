@@ -68,6 +68,36 @@ else:
 plt.plot(valores_x, valores_yf, color="red", marker="o", label="f(x)")
 plt.plot(valores_x, valores_yg, color="blue", marker="o", label="g(x)")
 
+if af != 0:
+    raiz_f = -bf / af
+    plt.scatter(raiz_f, 0, color="red", marker="x", s=100,
+                label="Raiz de f")
+
+if ag != 0:
+    raiz_g = -bg / ag
+    plt.scatter(raiz_g, 0, color="blue", marker="x", s=100,
+                label="Raiz de g")
+
+
+if af != 0:
+    plt.annotate(
+        f"({raiz_f:.2f}, 0)",
+        (raiz_f, 0),
+        xytext=(5, 10),
+        textcoords="offset points",
+        color="red"
+    )
+
+if ag != 0:
+    plt.annotate(
+        f"({raiz_g:.2f}, 0)",
+        (raiz_g, 0),
+        xytext=(5, -18),
+        textcoords="offset points",
+        color="blue"
+    )
+
+
 if af != ag and inicio <= x_intersecao <= fim:
     plt.scatter(x_intersecao, y_intersecao, color="green",
                 label="Interseção", zorder=3, s = 100)
@@ -103,6 +133,5 @@ plt.gca().text(
     verticalalignment="top",
     bbox=dict(boxstyle="round", facecolor="white", alpha=0.9)
 )
-
 
 plt.show()
