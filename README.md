@@ -9,6 +9,10 @@ O Explorador de Funções permite definir duas funções afins, analisar suas re
 
 O projeto foi criado com o objetivo de praticar programação em Python e aplicar conceitos matemáticos por meio de uma representação visual.
 
+## Demonstração
+
+![Gráfico das funções afins](imagens/grafico.png)
+
 ## Funcionalidades
 
 - Definição dos coeficientes de duas funções afins.
