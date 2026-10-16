@@ -88,4 +88,21 @@ plt.ylabel("y")
 plt.grid(True)
 plt.legend()
 
+
+texto_analise = (
+    f"f(x): {'crescente' if af > 0 else 'decrescente' if af < 0 else 'constante'}\n"
+    f"Raiz de f: {-bf / af if af != 0 else 'não possui raiz única'}\n\n"
+    f"g(x): {'crescente' if ag > 0 else 'decrescente' if ag < 0 else 'constante'}\n"
+    f"Raiz de g: {-bg / ag if ag != 0 else 'não possui raiz única'}"
+)
+
+plt.gca().text(
+    0.02, 0.98,
+    texto_analise,
+    transform=plt.gca().transAxes,
+    verticalalignment="top",
+    bbox=dict(boxstyle="round", facecolor="white", alpha=0.9)
+)
+
+
 plt.show()
