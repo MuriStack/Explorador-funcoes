@@ -19,6 +19,7 @@ from calculos.matematica import (
 from calculos.intersecoes import encontrar_intersecoes, encontrar_raizes
 from calculos.integrais import avaliar_integrando, calcular_integral
 from calculos.tabela_valores import gerar_tabela
+from graficos.animacao import AnimacaoCurva
 from graficos.visualizacao import desenhar_funcoes
 
 
@@ -1122,7 +1123,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.9")
+        self.janela.title("Explorador de Funções 4.0")
         self.janela.geometry("1360x840")
         self.janela.minsize(1050, 660)
         self.janela.configure(bg=FUNDO)
@@ -1150,6 +1151,8 @@ class ExploradorApp:
         self.funcao_integral = tk.StringVar(value="f")
         self.integral_ativa = False
         self.integral_artistas = []
+        self.animacao = None
+        self.funcao_animacao = tk.StringVar(value="f")
         self.funcoes_atuais = {}
         self.intervalo_atual = (-5, 5)
         self.visibilidade_elementos = {
@@ -1170,6 +1173,7 @@ class ExploradorApp:
         self.campos_expressao = {}
 
         self.criar_interface()
+        self.janela.protocol("WM_DELETE_WINDOW", self.fechar)
         self.gerar_grafico()
 
     @staticmethod
@@ -1400,6 +1404,8 @@ class ExploradorApp:
             self.cursor_precisao.ocultar(restaurar_status=True)
         if self.foco_pontos is not None:
             self.foco_pontos.atualizar_visibilidade()
+        if self.animacao is not None:
+            self.animacao.definir_visibilidade(self.animacao_visivel())
         self.canvas.draw_idle()
 
     def criar_interface(self):
@@ -1607,6 +1613,43 @@ class ExploradorApp:
             font=("DejaVu Sans", 9), wraplength=260,
         ).pack(anchor="w", fill="x", pady=(3, 0))
 
+        grupo_animacao = tk.Frame(self.pagina_analises, bg=PAINEL)
+        grupo_animacao.pack(fill="x", pady=(17, 0))
+        self.texto(
+            grupo_animacao, "ANIMAÇÃO DA CURVA", 9, SUAVE, True,
+        ).pack(anchor="w", pady=(0, 6))
+        linha_animacao = tk.Frame(grupo_animacao, bg=PAINEL)
+        linha_animacao.pack(fill="x")
+        coluna_funcao_animacao = tk.Frame(linha_animacao, bg=PAINEL)
+        coluna_funcao_animacao.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.texto(coluna_funcao_animacao, "Função", 9, SUAVE).pack(anchor="w", pady=(0, 4))
+        self.seletor_animacao = SeletorArredondado(
+            coluna_funcao_animacao, self.funcao_animacao, ("f", "g"),
+            self.alterar_funcao_animacao,
+        )
+        self.seletor_animacao.pack(fill="x")
+        coluna_duracao = tk.Frame(linha_animacao, bg=PAINEL)
+        coluna_duracao.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        self.texto(coluna_duracao, "Duração (s)", 9, SUAVE).pack(anchor="w", pady=(0, 4))
+        self.campo_duracao_animacao = CampoArredondado(coluna_duracao, "10")
+        self.campo_duracao_animacao.pack(fill="x")
+        self.campo_duracao_animacao.bind_enter(self.alternar_animacao)
+        self.botao_animacao = BotaoArredondado(
+            grupo_animacao, "INICIAR", self.alternar_animacao, contorno=True,
+        )
+        self.botao_animacao.pack(fill="x", pady=(9, 4))
+        BotaoArredondado(
+            grupo_animacao, "REINICIAR", self.reiniciar_animacao, contorno=True,
+        ).pack(fill="x", pady=(0, 4))
+        self.animacao_resumo = tk.StringVar(
+            value="Um ponto percorre a curva do início ao fim do intervalo do gráfico.",
+        )
+        tk.Label(
+            grupo_animacao, textvariable=self.animacao_resumo,
+            bg=PAINEL, fg=SUAVE, anchor="w", justify="left",
+            font=("DejaVu Sans", 9), wraplength=260,
+        ).pack(anchor="w", fill="x", pady=(3, 0))
+
         grupo_integral = tk.Frame(self.pagina_analises, bg=PAINEL)
         grupo_integral.pack(fill="x", pady=(17, 0))
         self.texto(
@@ -1808,6 +1851,9 @@ class ExploradorApp:
         seletor_tangente = getattr(self, "seletor_tangente", None)
         if seletor_tangente is not None:
             seletor_tangente.fechar_menu()
+        seletor_animacao = getattr(self, "seletor_animacao", None)
+        if seletor_animacao is not None:
+            seletor_animacao.fechar_menu()
         seletor_integral = getattr(self, "seletor_integral", None)
         if seletor_integral is not None:
             seletor_integral.fechar_menu()
@@ -1859,6 +1905,9 @@ class ExploradorApp:
         self.atualizar_seletores_intersecoes()
         self.seletor_tangente.atualizar_opcoes(tuple(self.nomes_ativos), True)
         self.seletor_integral.atualizar_opcoes(tuple(self.nomes_ativos), True)
+        self.seletor_animacao.atualizar_opcoes(tuple(self.nomes_ativos), True)
+        if self.funcao_animacao.get() not in self.nomes_ativos:
+            self.funcao_animacao.set(self.nomes_ativos[0])
         if self.funcao_integral.get() not in self.nomes_ativos:
             self.funcao_integral.set(self.nomes_ativos[0])
             self.integral_ativa = False
@@ -2083,6 +2132,7 @@ class ExploradorApp:
             )
         )
         self.resultado.set("\n\n".join(descricoes))
+        self.redefinir_animacao(redesenhar=False)
 
         if self.foco_pontos is not None:
             self.foco_pontos.desconectar()
@@ -2139,6 +2189,86 @@ class ExploradorApp:
         if self.integral_ativa:
             self.calcular_area(silencioso=True)
         self.atualizar_tabela_aberta()
+
+    def animacao_visivel(self):
+        return (
+            self.visibilidade_elementos["curvas"].get()
+            and self.visibilidade_funcoes[self.funcao_animacao.get()].get()
+        )
+
+    def atualizar_animacao(self, estado, x, y):
+        valor = "—" if y is None else f"{y:.6f}"
+        self.animacao_resumo.set(
+            f"{self.funcao_animacao.get()}(x) · {estado}\n"
+            f"x = {x:.6f}\nf(x) = {valor}"
+        )
+        texto = "PAUSAR" if estado == "Em execução" else "CONTINUAR"
+        if estado == "Concluída":
+            texto = "INICIAR"
+        self.botao_animacao.itemconfigure(self.botao_animacao.rotulo, text=texto)
+
+    def redefinir_animacao(self, redesenhar=True):
+        if self.animacao is not None:
+            self.animacao.encerrar()
+            self.animacao = None
+        self.animacao_resumo.set(
+            "Escolha a função e inicie o percurso no intervalo do gráfico."
+        )
+        self.botao_animacao.itemconfigure(self.botao_animacao.rotulo, text="INICIAR")
+        if redesenhar and self.canvas is not None:
+            self.canvas.draw_idle()
+
+    def alterar_funcao_animacao(self, _evento=None):
+        self.redefinir_animacao()
+
+    def preparar_animacao(self):
+        if self.animacao is not None:
+            return
+        nome = self.funcao_animacao.get()
+        if nome not in self.funcoes_atuais:
+            raise ValueError("Selecione uma função disponível no gráfico.")
+        self.animacao = AnimacaoCurva(
+            self.janela, self.canvas, nome, self.funcoes_atuais[nome],
+            *self.intervalo_atual, self.atualizar_animacao,
+        )
+        self.animacao.definir_visibilidade(self.animacao_visivel())
+
+    def alternar_animacao(self):
+        if self.figura is None:
+            return
+        if self.animacao is not None and self.animacao.executando:
+            self.animacao.pausar()
+            return
+        try:
+            try:
+                duracao = float(self.campo_duracao_animacao.get().strip().replace(",", "."))
+            except ValueError:
+                raise ValueError("Digite uma duração numérica válida.") from None
+            if not math.isfinite(duracao) or not 1 <= duracao <= 120:
+                raise ValueError("A duração deve estar entre 1 e 120 segundos.")
+            self.preparar_animacao()
+            self.animacao.iniciar(duracao)
+        except ValueError as erro:
+            messagebox.showerror("Animação", str(erro), parent=self.janela)
+
+    def reiniciar_animacao(self):
+        if self.figura is None:
+            return
+        try:
+            self.preparar_animacao()
+            self.animacao.reiniciar()
+        except ValueError as erro:
+            messagebox.showerror("Animação", str(erro), parent=self.janela)
+
+    def fechar(self):
+        if self.animacao is not None:
+            self.animacao.encerrar()
+        for pendente in (self.atualizacao_pendente, self.atualizacao_tangente_pendente):
+            if pendente is not None:
+                self.janela.after_cancel(pendente)
+        if self.figura is not None:
+            plt.close(self.figura)
+        self.janela.destroy()
 
     def alterar_funcao_integral(self, _evento=None):
         if self.integral_ativa:
