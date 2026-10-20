@@ -124,8 +124,81 @@ class CampoArredondado(tk.Canvas):
     def get(self):
         return self.entrada.get()
 
+    def set(self, valor):
+        self.entrada.delete(0, "end")
+        self.entrada.insert(0, str(valor))
+
     def bind_enter(self, comando):
         self.entrada.bind("<Return>", lambda _evento: comando())
+
+
+class SliderArredondado(tk.Canvas):
+    def __init__(self, parent, valor, minimo, maximo, passo, comando):
+        super().__init__(
+            parent, height=28, width=110, bg=PAINEL,
+            highlightthickness=0, bd=0, cursor="hand2", takefocus=True,
+        )
+        self.valor = float(valor)
+        self.minimo = float(minimo)
+        self.maximo = float(maximo)
+        self.passo = float(passo)
+        self.comando = comando
+        self.bind("<Configure>", self.redesenhar)
+        self.bind("<Button-1>", self.arrastar)
+        self.bind("<B1-Motion>", self.arrastar)
+        self.bind("<Left>", lambda _evento: self.mover_passo(-1))
+        self.bind("<Right>", lambda _evento: self.mover_passo(1))
+        self.bind("<Home>", lambda _evento: self.definir(self.minimo, True))
+        self.bind("<End>", lambda _evento: self.definir(self.maximo, True))
+
+    def redesenhar(self, _evento=None):
+        self.delete("all")
+        largura = self.winfo_width()
+        if largura < 34:
+            return
+        esquerda, direita, centro = 13, largura - 13, 14
+        fracao = (self.valor - self.minimo) / (self.maximo - self.minimo)
+        x = esquerda + (direita - esquerda) * fracao
+        self.create_line(
+            esquerda, centro, direita, centro,
+            fill=BORDA, width=5, capstyle="round",
+        )
+        self.create_line(
+            esquerda, centro, x, centro,
+            fill=DESTAQUE, width=5, capstyle="round",
+        )
+        self.create_oval(
+            x - 7, centro - 7, x + 7, centro + 7,
+            fill=DESTAQUE, outline=PAINEL, width=2,
+        )
+
+    def definir(self, valor, notificar=False):
+        if not math.isfinite(float(valor)):
+            return
+        if valor < self.minimo or valor > self.maximo:
+            folga = max(1.0, abs(float(valor)))
+            self.minimo = min(self.minimo, -math.ceil(folga * 1.2))
+            self.maximo = max(self.maximo, math.ceil(folga * 1.2))
+        novo = max(self.minimo, min(self.maximo, round(float(valor) / self.passo) * self.passo))
+        novo = round(novo, 8)
+        if novo == self.valor:
+            return
+        self.valor = novo
+        self.redesenhar()
+        if notificar:
+            self.comando(novo)
+
+    def arrastar(self, evento):
+        self.focus_set()
+        largura = self.winfo_width()
+        if largura <= 26:
+            return
+        proporcao = max(0.0, min(1.0, (evento.x - 13) / (largura - 26)))
+        self.definir(self.minimo + proporcao * (self.maximo - self.minimo), True)
+
+    def mover_passo(self, direcao):
+        self.definir(self.valor + direcao * self.passo, True)
+        return "break"
 
 
 class BotaoArredondado(tk.Canvas):
@@ -835,7 +908,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.4")
+        self.janela.title("Explorador de Funções 3.5")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -847,6 +920,9 @@ class ExploradorApp:
         self.cursor_precisao = None
         self.foco_pontos = None
         self.campos = {}
+        self.sliders = {}
+        self.atualizacao_pendente = None
+        self.atualizacao_tangente_pendente = None
         self.quantidade_funcoes = 2
         self.primeira_intersecao = tk.StringVar(value="f")
         self.segunda_intersecao = tk.StringVar(value="g")
@@ -898,7 +974,58 @@ class ExploradorApp:
             entrada.bind_enter(self.gerar_grafico)
             self.campos[chave] = entrada
             self.rotulos[chave] = rotulo_widget
+            self.criar_slider_campo(coluna, chave, entrada, valor)
         return linha
+
+    def criar_slider_campo(self, parent, chave, entrada, valor):
+        eh_intervalo = chave in ("inicio", "fim")
+        minimo, maximo, passo = (-20, 20, 1) if eh_intervalo else (-10, 10, 0.1)
+        slider = SliderArredondado(
+            parent, float(valor), minimo, maximo, passo,
+            lambda numero, campo=entrada, nome=chave: self.ajustar_com_slider(
+                nome, campo, numero
+            ),
+        )
+        slider.pack(fill="x", pady=(3, 0))
+        self.sliders[chave] = slider
+        entrada.entrada.bind(
+            "<FocusOut>",
+            lambda _evento, nome=chave: self.sincronizar_slider(nome),
+            add="+",
+        )
+        entrada.entrada.bind(
+            "<Return>",
+            lambda _evento, nome=chave: self.sincronizar_slider(nome),
+            add="+",
+        )
+        return slider
+
+    def sincronizar_slider(self, chave):
+        try:
+            numero = float(self.campos[chave].get().replace(",", "."))
+            self.sliders[chave].definir(numero)
+        except (ValueError, OverflowError):
+            return
+
+    def ajustar_com_slider(self, chave, campo, valor):
+        campo.set(f"{valor:g}")
+        if self.atualizacao_pendente is not None:
+            self.janela.after_cancel(self.atualizacao_pendente)
+        self.atualizacao_pendente = self.janela.after(
+            200, self.atualizar_grafico_com_slider,
+        )
+
+    def atualizar_grafico_com_slider(self):
+        self.atualizacao_pendente = None
+        try:
+            inicio = int(self.campos["inicio"].get())
+            fim = int(self.campos["fim"].get())
+            if inicio >= fim:
+                self.status.set("Ajuste o intervalo: início deve ser menor que fim.")
+                return
+        except ValueError:
+            return
+        self.gerar_grafico(silencioso=True)
 
     def criar_grupo_funcao(self, parent, nome, valores):
         grupo = tk.Frame(parent, bg=PAINEL)
@@ -945,6 +1072,7 @@ class ExploradorApp:
         entrada_c.pack(fill="x")
         entrada_c.bind_enter(self.gerar_grafico)
         self.campos[f"c{nome}"] = entrada_c
+        self.criar_slider_campo(linha_c, f"c{nome}", entrada_c, c)
         self.campos_c[nome] = linha_c
         linha_expressao = tk.Frame(grupo, bg=PAINEL)
         self.texto(
@@ -1185,6 +1313,15 @@ class ExploradorApp:
         self.campo_tangente_x = CampoArredondado(coluna_x, "2")
         self.campo_tangente_x.pack(fill="x")
         self.campo_tangente_x.bind_enter(self.tracar_tangente)
+        self.slider_tangente = SliderArredondado(
+            coluna_x, 2, -20, 20, 0.1,
+            self.ajustar_tangente_slider,
+        )
+        self.slider_tangente.pack(fill="x", pady=(3, 0))
+        self.campo_tangente_x.entrada.bind(
+            "<FocusOut>", lambda _evento: self.sincronizar_tangente_slider(),
+            add="+",
+        )
         BotaoArredondado(
             grupo_tangente, "TRAÇAR TANGENTE", self.tracar_tangente,
             contorno=True,
@@ -1306,6 +1443,27 @@ class ExploradorApp:
         self.janela.update_idletasks()
         if self.canvas is not None:
             self.canvas.draw_idle()
+
+    def ajustar_tangente_slider(self, valor):
+        self.campo_tangente_x.set(f"{valor:g}")
+        if self.atualizacao_tangente_pendente is not None:
+            self.janela.after_cancel(self.atualizacao_tangente_pendente)
+        if self.tangente_ativa:
+            self.atualizacao_tangente_pendente = self.janela.after(
+                120, self.atualizar_tangente_com_slider,
+            )
+
+    def atualizar_tangente_com_slider(self):
+        self.atualizacao_tangente_pendente = None
+        if self.tangente_ativa:
+            self.tracar_tangente(silencioso=True)
+
+    def sincronizar_tangente_slider(self):
+        try:
+            valor = float(self.campo_tangente_x.get().replace(",", "."))
+            self.slider_tangente.definir(valor)
+        except (ValueError, OverflowError):
+            return
 
     def fechar_menus(self):
         for seletor in getattr(self, "seletores_intersecoes", ()):
@@ -1483,7 +1641,10 @@ class ExploradorApp:
             linhas.append(f"Vértice: ({numero(vx)}, {numero(vy)})")
         return "\n".join(linhas)
 
-    def gerar_grafico(self):
+    def gerar_grafico(self, silencioso=False):
+        if self.atualizacao_pendente is not None:
+            self.janela.after_cancel(self.atualizacao_pendente)
+            self.atualizacao_pendente = None
         try:
             funcoes = [
                 (nome, self.obter_polinomio(nome)) for nome in self.nomes_ativos
@@ -1530,7 +1691,10 @@ class ExploradorApp:
             )
 
         except (ValueError, OverflowError, ZeroDivisionError) as erro:
-            messagebox.showerror("Entrada inválida", str(erro))
+            if silencioso:
+                self.status.set(f"Ajuste os valores: {erro}")
+            else:
+                messagebox.showerror("Entrada inválida", str(erro))
             return
 
         descricoes = [

@@ -14,7 +14,7 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 
 - Visualização de até **cinco funções** simultaneamente.
 - Suporte a funções **afins, quadráticas e expressões matemáticas**.
-- Adição e remoção dinâmica de funções.
+- Adição e remoção de funções, com **sliders para coeficientes, intervalo e tangente**.
 - Cálculo de raízes, vértices, discriminante e interseções.
 - **Raízes numéricas de expressões não polinomiais**, destacadas no gráfico.
 - Interseções numéricas entre diferentes tipos de funções.
