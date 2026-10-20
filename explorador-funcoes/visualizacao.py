@@ -21,6 +21,9 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
         "grade": "#334155" if tema_escuro else "#d8dee8",
         "f": "#38bdf8" if tema_escuro else "#ef4444",
         "g": "#f472b6" if tema_escuro else "#2563eb",
+        "h": "#fbbf24" if tema_escuro else "#d97706",
+        "i": "#a78bfa" if tema_escuro else "#7c3aed",
+        "j": "#2dd4bf" if tema_escuro else "#0d9488",
         "intersecao": "#4ade80" if tema_escuro else "#16a34a",
         "vertice": "#fbbf24" if tema_escuro else "#ca8a04",
     }
@@ -65,7 +68,7 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
         funcao.polinomio if isinstance(funcao, Expressao) else funcao
         for _, funcao in funcoes
     ]
-    if len(polinomios) == 2 and all(p is not None for p in polinomios):
+    if len(polinomios) >= 2 and all(p is not None for p in polinomios[:2]):
         situacao, intersecoes = calcular_intersecoes_polinomios(
             polinomios[0], polinomios[1]
         )
@@ -73,7 +76,7 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
             for indice, (x, y) in enumerate(intersecoes):
                 if inicio <= x <= fim:
                     eixo.scatter(x, y, color=cores["intersecao"], s=115,
-                                 zorder=7, label="Interseção" if indice == 0 else None)
+                                 zorder=7, label="Interseção f/g" if indice == 0 else None)
                     eixo.annotate(f"({x:.2f}, {y:.2f})", (x, y),
                                   xytext=(10, 12), textcoords="offset points",
                                   color=cores["intersecao"], fontsize=9)
@@ -81,7 +84,10 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
     eixo.axhline(0, color=cores["texto"], alpha=0.55, linewidth=1)
     eixo.axvline(0, color=cores["texto"], alpha=0.55, linewidth=1)
     eixo.set_xlim(inicio, fim)
-    titulo = "Comparação de funções" if len(funcoes) == 2 else "Análise de função"
+    titulo = (
+        f"Comparação de {len(funcoes)} funções"
+        if len(funcoes) > 1 else "Análise de função"
+    )
     eixo.set_title(titulo, color=cores["texto"], fontsize=14, pad=18)
     eixo.set_xlabel("x", color=cores["texto"])
     eixo.set_ylabel("y", color=cores["texto"])

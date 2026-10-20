@@ -200,7 +200,7 @@ class BotaoModo(tk.Canvas):
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.4")
+        self.janela.title("Explorador de Funções 2.6")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -209,8 +209,8 @@ class ExploradorApp:
         self.canvas = None
         self.toolbar = None
         self.campos = {}
-        self.modo = "duas"
-        self.tipos = {"f": "Afim", "g": "Afim"}
+        self.quantidade_funcoes = 2
+        self.tipos = {nome: "Afim" for nome in "fghij"}
         self.botoes_tipo = {}
         self.rotulos = {}
         self.campos_c = {}
@@ -299,7 +299,7 @@ class ExploradorApp:
             linha_expressao, "Escreva a função de x", 9, SUAVE
         ).pack(anchor="w", pady=(4, 3))
         campo = CampoArredondado(
-            linha_expressao, "sin(x)" if nome == "f" else "cos(x)"
+            linha_expressao, {"f": "sin(x)", "g": "cos(x)", "h": "x^2", "i": "sqrt(x)", "j": "1/x"}[nome]
         )
         campo.pack(fill="x")
         campo.bind_enter(self.gerar_grafico)
@@ -324,13 +324,16 @@ class ExploradorApp:
         lateral = barra.conteudo
 
         rolagem = tk.Canvas(lateral, bg=PAINEL, highlightthickness=0, bd=0)
-        rolagem.pack(side="left", fill="both", expand=True)
         barra_rolagem = tk.Scrollbar(
             lateral, orient="vertical", command=rolagem.yview,
-            bg=CAMPO, troughcolor=PAINEL,
+            bg=DESTAQUE, activebackground="#7dd3fc",
+            troughcolor=CAMPO, width=15,
         )
         barra_rolagem.pack(side="right", fill="y")
+        rolagem.pack(side="left", fill="both", expand=True)
         rolagem.configure(yscrollcommand=barra_rolagem.set)
+        self.rolagem = rolagem
+        self.barra_rolagem = barra_rolagem
         interno = tk.Frame(rolagem, bg=PAINEL)
         janela_interna = rolagem.create_window((0, 0), window=interno, anchor="nw")
         interno.bind(
@@ -341,11 +344,6 @@ class ExploradorApp:
             "<Configure>",
             lambda evento: rolagem.itemconfigure(janela_interna, width=evento.width),
         )
-        rolagem.bind("<Button-4>", lambda _evento: rolagem.yview_scroll(-3, "units"))
-        rolagem.bind("<Button-5>", lambda _evento: rolagem.yview_scroll(3, "units"))
-        rolagem.bind("<MouseWheel>", lambda evento: rolagem.yview_scroll(
-            -1 if evento.delta > 0 else 1, "units"
-        ))
 
         self.texto(interno, "PARÂMETROS", 12, DESTAQUE, True).pack(
             anchor="w", pady=(0, 7)
@@ -365,8 +363,29 @@ class ExploradorApp:
         self.botao_duas.pack(side="left", fill="x", expand=True, padx=(5, 0))
         self.botao_duas.definir_selecionado(True)
 
-        self.grupo_f = self.criar_grupo_funcao(interno, "f", ("2", "1", "0"))
-        self.grupo_g = self.criar_grupo_funcao(interno, "g", ("-1", "4", "0"))
+        controles = tk.Frame(interno, bg=PAINEL)
+        controles.pack(fill="x", pady=(8, 3))
+        BotaoArredondado(
+            controles, "+ ADICIONAR", self.adicionar_funcao, contorno=True
+        ).pack(side="left", fill="x", expand=True, padx=(0, 4))
+        BotaoArredondado(
+            controles, "− REMOVER", self.remover_funcao, contorno=True
+        ).pack(side="left", fill="x", expand=True, padx=(4, 0))
+        self.indicador_funcoes = self.texto(interno, "2 de 5 funções", 9, SUAVE)
+        self.indicador_funcoes.pack(anchor="w", pady=(2, 0))
+
+        self.grupos_funcoes = {}
+        for nome, valores in (
+            ("f", ("2", "1", "0")),
+            ("g", ("-1", "4", "0")),
+            ("h", ("1", "0", "0")),
+            ("i", ("-2", "1", "0")),
+            ("j", ("0", "3", "0")),
+        ):
+            grupo = self.criar_grupo_funcao(interno, nome, valores)
+            self.grupos_funcoes[nome] = grupo
+            if nome in "hij":
+                grupo.pack_forget()
 
         self.grupo_intervalo = tk.Frame(interno, bg=PAINEL)
         self.texto(self.grupo_intervalo, "INTERVALO", 9, SUAVE, True).pack(
@@ -405,6 +424,9 @@ class ExploradorApp:
         self.area_grafico = tk.Frame(direita, bg=PAINEL)
         self.area_grafico.pack(fill="both", expand=True)
 
+        self.vincular_rolagem(interno)
+        self.vincular_rolagem(rolagem)
+
         self.status = tk.StringVar(value="Pronto")
         tk.Label(
             self.janela, textvariable=self.status, bg=FUNDO,
@@ -412,17 +434,54 @@ class ExploradorApp:
             padx=28, pady=11,
         ).pack(fill="x")
 
-    def alterar_modo(self, modo):
-        if self.modo == modo:
+    def rolar_painel(self, direcao):
+        self.rolagem.yview_scroll(direcao, "units")
+        return "break"
+
+    def vincular_rolagem(self, widget):
+        widget.bind(
+            "<Button-4>", lambda _evento: self.rolar_painel(-3), add="+"
+        )
+        widget.bind(
+            "<Button-5>", lambda _evento: self.rolar_painel(3), add="+"
+        )
+        widget.bind(
+            "<MouseWheel>",
+            lambda evento: self.rolar_painel(
+                -3 if evento.delta > 0 else 3
+            ),
+            add="+",
+        )
+        for filho in widget.winfo_children():
+            self.vincular_rolagem(filho)
+
+    @property
+    def nomes_ativos(self):
+        return "fghij"[:self.quantidade_funcoes]
+
+    def definir_quantidade(self, quantidade):
+        if not 1 <= quantidade <= 5 or quantidade == self.quantidade_funcoes:
             return
-        self.modo = modo
-        self.botao_uma.definir_selecionado(modo == "uma")
-        self.botao_duas.definir_selecionado(modo == "duas")
-        if modo == "uma":
-            self.grupo_g.pack_forget()
-        else:
-            self.grupo_g.pack(fill="x", before=self.grupo_intervalo)
+        self.quantidade_funcoes = quantidade
+        for indice, nome in enumerate("fghij"):
+            grupo = self.grupos_funcoes[nome]
+            if indice < quantidade and not grupo.winfo_manager():
+                grupo.pack(fill="x", before=self.grupo_intervalo)
+            elif indice >= quantidade and grupo.winfo_manager():
+                grupo.pack_forget()
+        self.botao_uma.definir_selecionado(quantidade == 1)
+        self.botao_duas.definir_selecionado(quantidade == 2)
+        self.indicador_funcoes.configure(text=f"{quantidade} de 5 funções")
         self.gerar_grafico()
+
+    def alterar_modo(self, modo):
+        self.definir_quantidade(1 if modo == "uma" else 2)
+
+    def adicionar_funcao(self):
+        self.definir_quantidade(self.quantidade_funcoes + 1)
+
+    def remover_funcao(self):
+        self.definir_quantidade(self.quantidade_funcoes - 1)
 
     def alterar_tipo(self, nome, tipo):
         if self.tipos[nome] == tipo:
@@ -445,7 +504,7 @@ class ExploradorApp:
                 self.campos_c[nome].pack_forget()
                 self.rotulos[f"a{nome}"].configure(text="a · angular")
                 self.rotulos[f"b{nome}"].configure(text="b · linear")
-        if nome == "f" or self.modo == "duas":
+        if nome in self.nomes_ativos:
             self.gerar_grafico()
 
     def ler_numero(self, chave):
@@ -503,9 +562,9 @@ class ExploradorApp:
 
     def gerar_grafico(self):
         try:
-            funcoes = [("f", self.obter_polinomio("f"))]
-            if self.modo == "duas":
-                funcoes.append(("g", self.obter_polinomio("g")))
+            funcoes = [
+                (nome, self.obter_polinomio(nome)) for nome in self.nomes_ativos
+            ]
 
             inicio = int(self.campos["inicio"].get())
             fim = int(self.campos["fim"].get())
@@ -529,7 +588,7 @@ class ExploradorApp:
                 funcao.polinomio if isinstance(funcao, Expressao) else funcao
                 for _, funcao in funcoes
             ]
-            if len(funcoes) == 2 and all(p is not None for p in polinomios):
+            if len(funcoes) >= 2 and all(p is not None for p in polinomios[:2]):
                 intersecoes = calcular_intersecoes_polinomios(
                     polinomios[0], polinomios[1]
                 )
@@ -563,9 +622,11 @@ class ExploradorApp:
                     + (" · fora do intervalo" if not inicio <= x <= fim else "")
                     for x, y in pontos
                 )
-            descricoes.append(f"INTERSEÇÕES\n{texto_intersecao}")
-        if len(funcoes) == 2 and intersecoes is None:
-            descricoes.append("INTERSEÇÕES\nCálculo disponível para polinômios de grau até 2.")
+            descricoes.append(f"INTERSEÇÕES f/g\n{texto_intersecao}")
+        if len(funcoes) >= 2 and intersecoes is None:
+            descricoes.append(
+                "INTERSEÇÕES f/g\nCálculo disponível para polinômios de grau até 2."
+            )
         self.resultado.set("\n\n".join(descricoes))
 
         if self.toolbar is not None:
@@ -589,8 +650,8 @@ class ExploradorApp:
 
         numero_funcoes = len(funcoes)
         self.status.set(
-            f"Gráfico atualizado  •  "
-            f"{'2 funções' if numero_funcoes == 2 else '1 função'}"
+            f"Gráfico atualizado  •  {numero_funcoes} "
+            f"{'função' if numero_funcoes == 1 else 'funções'}"
             f"  •  Intervalo [{inicio}, {fim}]"
         )
 
