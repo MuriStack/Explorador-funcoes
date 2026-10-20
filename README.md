@@ -4,7 +4,7 @@ Aplicação em **Python** para analisar, comparar e exportar gráficos matemáti
 
 ## Sobre o projeto
 
-O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adicionou um **cursor de precisão** para identificar pontos das curvas com seis casas decimais. A versão **2.8** permite clicar em raízes, vértices e interseções para aproximar o gráfico do ponto selecionado, com a possibilidade de restaurar a visualização. A versão **2.9** substitui a barra cinza padrão do Matplotlib por controles de navegação discretos e integrados ao tema da interface.
+O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adicionou um **cursor de precisão** para identificar pontos das curvas com seis casas decimais. A versão **2.8** permite clicar em raízes, vértices e interseções para aproximar o gráfico do ponto selecionado, com a possibilidade de restaurar a visualização. A versão **2.9** substitui a barra cinza padrão do Matplotlib por controles de navegação discretos e integrados ao tema da interface. A versão **3.0** introduz um painel de parâmetros recolhível para ampliar a área destinada ao gráfico sem perder as configurações.
 
 ## Demonstração
 
@@ -13,6 +13,7 @@ O Explorador de Funções permite visualizar **uma a cinco funções simultânea
 ## Funcionalidades
 
 - Visualização de **1 a 5 funções** no mesmo plano cartesiano, usando **+ ADICIONAR** e **− REMOVER**.
+- **Painel de parâmetros recolhível:** pequeno botão com setas entre o painel e o gráfico permite ocultar e reexibir a lateral, liberando mais espaço para a visualização.
 - Modos **Afim**, **Quadrática** e **Expressão** para cada função, independentemente.
 - **Zoom inteligente:** clique diretamente em uma raiz, vértice ou interseção visível para centralizar e ampliar a visualização, mostrando suas coordenadas com seis casas decimais.
 - **Navegação minimalista:** a barra cinza do Matplotlib não aparece mais. Os botões **MOVER** e **ZOOM**, no cabeçalho do gráfico, permitem navegar manualmente sem quebrar a identidade visual.
@@ -25,6 +26,17 @@ O Explorador de Funções permite visualizar **uma a cinco funções simultânea
 - Cálculo de discriminante e indicação do comportamento das funções aplicáveis.
 - Intervalo configurável, gráficos interativos e exportação em PNG.
 - Tratamento de entradas inválidas e preservação da versão de terminal.
+
+## Painel recolhível — versão 3.0
+
+O pequeno botão com seta fica na divisória entre os parâmetros e o gráfico:
+
+1. Clique na seta apontada para a esquerda para ocultar o painel lateral e ampliar a área do gráfico.
+2. Com o painel oculto, clique na seta apontada para a direita para reabrir os parâmetros.
+3. Os valores digitados, os tipos de função escolhidos e a quantidade de curvas continuam preservados. A posição de rolagem lateral também é mantida.
+4. A ação não gera um novo gráfico: os limites dos eixos permanecem os mesmos, inclusive após zoom manual ou foco em pontos notáveis.
+
+O botão também pode ser acionado com **Enter** ou **Espaço** quando recebe foco pelo teclado. A barra de rolagem do painel e os recursos matemáticos existentes continuam disponíveis normalmente.
 
 ## Como usar o cursor de precisão
 
@@ -135,7 +147,7 @@ Use `*` para multiplicar, como em `2*x`. Tanto `^` quanto `**` representam potê
 
 - **`matematica.py`** — cálculos de raízes, discriminante, vértice e interseções.
 - **`visualizacao.py`** — desenho simultâneo de até cinco curvas e seus pontos notáveis.
-- **`interface.py`** — controles de navegação minimalistas, cursor de precisão, zoom inteligente e exportação.
+- **`interface.py`** — painel recolhível, navegação minimalista, cursor de precisão, zoom inteligente e exportação.
 - **`expressoes.py`** — avaliação controlada das expressões matemáticas.
 - **`cursor_precisao.py`** — cálculo e apresentação das coordenadas durante o movimento do mouse.
 - **`explorador.py`** — versão de terminal.
@@ -148,7 +160,7 @@ Use `*` para multiplicar, como em `2*x`. Tanto `^` quanto `**` representam potê
 
 ## Próximos passos
 
-- Permitir detectar interseções entre diferentes pares de funções, incluindo expressões não polinomiais, na próxima versão.
+- Ampliar o cálculo de interseções para diferentes pares de funções, incluindo expressões não polinomiais, em uma atualização futura.
 
 ## Autor
 

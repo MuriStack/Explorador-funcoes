@@ -198,6 +198,56 @@ class BotaoModo(tk.Canvas):
         self.itemconfigure(self.rotulo, fill=FUNDO if selecionado else SUAVE)
 
 
+class BotaoRecolher(tk.Canvas):
+    def __init__(self, parent, comando):
+        super().__init__(
+            parent, bg=FUNDO, width=30, height=66,
+            highlightthickness=0, bd=0, cursor="hand2", takefocus=True,
+        )
+        self.comando = comando
+        self.recolhido = False
+        self.sobre = False
+        self.bind("<Configure>", self.redesenhar)
+        self.bind("<Enter>", self.entrar)
+        self.bind("<Leave>", self.sair)
+        self.bind("<Button-1>", self.acionar)
+        self.bind("<Return>", self.acionar)
+        self.bind("<space>", self.acionar)
+
+    def redesenhar(self, _evento=None):
+        self.delete("all")
+        largura = self.winfo_width()
+        altura = self.winfo_height()
+        self.create_polygon(
+            *pontos_arredondados(1, 1, largura - 1, altura - 1, 12),
+            fill="#314761" if self.sobre else CAMPO,
+            outline=DESTAQUE if self.sobre else BORDA,
+            width=1,
+        )
+        self.create_text(
+            largura / 2, altura / 2 - 1,
+            text="❯" if self.recolhido else "❮",
+            fill=DESTAQUE if self.sobre else SUAVE,
+            font=("DejaVu Sans", 14, "bold"),
+        )
+
+    def definir_recolhido(self, recolhido):
+        self.recolhido = recolhido
+        self.redesenhar()
+
+    def entrar(self, _evento):
+        self.sobre = True
+        self.redesenhar()
+
+    def sair(self, _evento):
+        self.sobre = False
+        self.redesenhar()
+
+    def acionar(self, _evento):
+        self.focus_set()
+        self.comando()
+
+
 class BarraRolagemMinimalista(tk.Canvas):
     def __init__(self, parent, command):
         super().__init__(
@@ -514,12 +564,13 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.9")
+        self.janela.title("Explorador de Funções 3.0")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
 
         self.figura = None
+        self.parametros_visiveis = True
         self.canvas = None
         self.toolbar = None
         self.cursor_precisao = None
@@ -635,9 +686,19 @@ class ExploradorApp:
         corpo = tk.Frame(self.janela, bg=FUNDO, padx=24, pady=5)
         corpo.pack(fill="both", expand=True)
 
-        barra = CartaoArredondado(corpo, largura=335, raio=24, margem=17)
-        barra.pack(side="left", fill="y", padx=(0, 16))
-        lateral = barra.conteudo
+        self.painel_parametros = CartaoArredondado(
+            corpo, largura=335, raio=24, margem=17,
+        )
+        self.painel_parametros.pack(side="left", fill="y", padx=(0, 9))
+        lateral = self.painel_parametros.conteudo
+
+        self.faixa_alternancia = tk.Frame(corpo, bg=FUNDO, width=34)
+        self.faixa_alternancia.pack(side="left", fill="y", padx=(0, 10))
+        self.faixa_alternancia.pack_propagate(False)
+        self.botao_recolher = BotaoRecolher(
+            self.faixa_alternancia, self.alternar_parametros,
+        )
+        self.botao_recolher.place(relx=0.5, rely=0.5, anchor="center")
 
         rolagem = tk.Canvas(lateral, bg=PAINEL, highlightthickness=0, bd=0)
         barra_rolagem = BarraRolagemMinimalista(
@@ -730,7 +791,7 @@ class ExploradorApp:
         ).pack(anchor="w", fill="x", pady=(0, 15))
 
         painel_grafico = CartaoArredondado(corpo, raio=24, margem=17)
-        painel_grafico.pack(side="right", fill="both", expand=True)
+        painel_grafico.pack(side="left", fill="both", expand=True)
         direita = painel_grafico.conteudo
         cabecalho_grafico = tk.Frame(direita, bg=PAINEL)
         cabecalho_grafico.pack(fill="x", pady=(2, 4))
@@ -780,6 +841,22 @@ class ExploradorApp:
             fg=SUAVE, anchor="w", font=("DejaVu Sans", 9),
             padx=28, pady=11,
         ).pack(fill="x")
+
+    def alternar_parametros(self):
+        if self.parametros_visiveis:
+            self.painel_parametros.pack_forget()
+            self.parametros_visiveis = False
+        else:
+            self.painel_parametros.pack(
+                side="left", fill="y", padx=(0, 9),
+                before=self.faixa_alternancia,
+            )
+            self.parametros_visiveis = True
+
+        self.botao_recolher.definir_recolhido(not self.parametros_visiveis)
+        self.janela.update_idletasks()
+        if self.canvas is not None:
+            self.canvas.draw_idle()
 
     def rolar_painel(self, direcao):
         self.rolagem.yview_scroll(direcao, "units")
