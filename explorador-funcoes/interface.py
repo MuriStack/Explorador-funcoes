@@ -514,7 +514,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.8")
+        self.janela.title("Explorador de Funções 2.9")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -737,8 +737,24 @@ class ExploradorApp:
         self.texto(
             cabecalho_grafico, "VISUALIZAÇÃO CARTESIANA", 11, SUAVE, True
         ).pack(side="left")
+        self.texto(
+            cabecalho_grafico, "GRÁFICO INTERATIVO", 8, DESTAQUE, True
+        ).pack(side="right")
+
+        navegacao = tk.Frame(direita, bg=PAINEL)
+        navegacao.pack(fill="x", pady=(5, 7))
+        self.botao_mover = BotaoModo(
+            navegacao, "MOVER", self.alternar_mover, altura=36
+        )
+        self.botao_mover.configure(width=105)
+        self.botao_mover.pack(side="left", padx=(0, 6))
+        self.botao_zoom = BotaoModo(
+            navegacao, "ZOOM", self.alternar_zoom, altura=36
+        )
+        self.botao_zoom.configure(width=105)
+        self.botao_zoom.pack(side="left")
         self.botao_restaurar = BotaoArredondado(
-            cabecalho_grafico, "RESTAURAR VISÃO",
+            navegacao, "RESTAURAR VISÃO",
             self.restaurar_visualizacao, contorno=True,
         )
         self.botao_restaurar.configure(width=176, height=36)
@@ -746,10 +762,11 @@ class ExploradorApp:
             self.botao_restaurar.fundo, outline="#64748b", width=2,
         )
         self.botao_restaurar.pack(side="right")
+
         self.texto(
-            direita, "Clique em uma raiz, vértice ou interseção para aproximar.",
+            direita, "Clique nos pontos notáveis para aproximar. Use Mover ou Zoom para navegar.",
             9, SUAVE,
-        ).pack(anchor="w", pady=(0, 9))
+        ).pack(anchor="w", pady=(0, 8))
         self.area_grafico = tk.Frame(direita, bg=PAINEL)
         self.area_grafico.pack(fill="both", expand=True)
 
@@ -973,6 +990,7 @@ class ExploradorApp:
             plt.close(self.figura)
 
         self.figura = nova_figura
+        self.figura.set_tight_layout(True)
         self.canvas = FigureCanvasTkAgg(
             self.figura, master=self.area_grafico
         )
@@ -982,7 +1000,7 @@ class ExploradorApp:
             self.canvas, self.area_grafico, pack_toolbar=False
         )
         self.toolbar.update()
-        self.toolbar.pack(side="bottom", fill="x")
+        self.atualizar_navegacao()
 
         numero_funcoes = len(funcoes)
         self.status.set(
@@ -999,7 +1017,42 @@ class ExploradorApp:
         )
         self.cursor_precisao.foco = self.foco_pontos
 
+    def atualizar_navegacao(self):
+        modo = getattr(self.toolbar.mode, "name", "NONE") if self.toolbar else "NONE"
+        self.botao_mover.definir_selecionado(modo == "PAN")
+        self.botao_zoom.definir_selecionado(modo == "ZOOM")
+
+    def alternar_mover(self):
+        if self.toolbar is None:
+            return
+        if self.toolbar.mode.name == "ZOOM":
+            self.toolbar.zoom()
+        self.toolbar.pan()
+        self.atualizar_navegacao()
+        if self.toolbar.mode.name == "PAN":
+            self.status.set("Mover ativo  •  arraste para deslocar o gráfico")
+        elif self.cursor_precisao is not None:
+            self.status.set(self.cursor_precisao.status_base)
+
+    def alternar_zoom(self):
+        if self.toolbar is None:
+            return
+        if self.toolbar.mode.name == "PAN":
+            self.toolbar.pan()
+        self.toolbar.zoom()
+        self.atualizar_navegacao()
+        if self.toolbar.mode.name == "ZOOM":
+            self.status.set("Zoom ativo  •  arraste para selecionar uma região")
+        elif self.cursor_precisao is not None:
+            self.status.set(self.cursor_precisao.status_base)
+
     def restaurar_visualizacao(self):
+        if self.toolbar is not None:
+            if self.toolbar.mode.name == "PAN":
+                self.toolbar.pan()
+            elif self.toolbar.mode.name == "ZOOM":
+                self.toolbar.zoom()
+            self.atualizar_navegacao()
         if self.foco_pontos is not None:
             self.foco_pontos.restaurar()
 

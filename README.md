@@ -4,7 +4,7 @@ Aplicação em **Python** para analisar, comparar e exportar gráficos matemáti
 
 ## Sobre o projeto
 
-O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adicionou um **cursor de precisão** para identificar pontos das curvas com seis casas decimais. A versão **2.8** permite clicar em raízes, vértices e interseções para aproximar o gráfico do ponto selecionado, com a possibilidade de restaurar a visualização.
+O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adicionou um **cursor de precisão** para identificar pontos das curvas com seis casas decimais. A versão **2.8** permite clicar em raízes, vértices e interseções para aproximar o gráfico do ponto selecionado, com a possibilidade de restaurar a visualização. A versão **2.9** substitui a barra cinza padrão do Matplotlib por controles de navegação discretos e integrados ao tema da interface.
 
 ## Demonstração
 
@@ -15,7 +15,8 @@ O Explorador de Funções permite visualizar **uma a cinco funções simultânea
 - Visualização de **1 a 5 funções** no mesmo plano cartesiano, usando **+ ADICIONAR** e **− REMOVER**.
 - Modos **Afim**, **Quadrática** e **Expressão** para cada função, independentemente.
 - **Zoom inteligente:** clique diretamente em uma raiz, vértice ou interseção visível para centralizar e ampliar a visualização, mostrando suas coordenadas com seis casas decimais.
-- **Restaurar visão:** botão com bordas arredondadas e contorno discreto, que retorna aos limites originais do gráfico após usar o zoom inteligente ou a navegação manual.
+- **Navegação minimalista:** a barra cinza do Matplotlib não aparece mais. Os botões **MOVER** e **ZOOM**, no cabeçalho do gráfico, permitem navegar manualmente sem quebrar a identidade visual.
+- **Restaurar visão:** botão com bordas arredondadas e contorno discreto, que retorna aos limites originais do gráfico após usar o zoom inteligente ou a navegação manual e desativa o modo de navegação.
 - **Cursor de precisão:** ao aproximar o mouse de uma curva, o programa destaca o ponto e mostra as coordenadas `x` e `y` com seis casas decimais.
 - Exibição das coordenadas livres do mouse na barra inferior quando ele está no gráfico, mas longe das curvas.
 - O cursor ignora resultados indefinidos e não interfere nas ferramentas de zoom e movimentação.
@@ -41,7 +42,17 @@ Os valores exibidos são calculados a partir da função na posição horizontal
 3. O gráfico será centralizado e ampliado em torno do ponto, com `x` e `y` exibidos com seis casas decimais.
 4. Clique novamente no ponto selecionado para ampliar mais, ou clique em **RESTAURAR VISÃO** para retornar aos limites originais.
 
-O clique funciona apenas perto dos pontos matematicamente calculados e atualmente visíveis, sem ativar as ferramentas de zoom ou movimentação do Matplotlib. As interseções automáticas continuam limitadas a `f(x)` e `g(x)` polinomiais de grau até 2, e as raízes e os vértices continuam sendo destacados apenas nos polinômios de grau até 2. A ampliação não aumenta a precisão numérica dos cálculos, apenas melhora a inspeção visual do ponto.
+O clique funciona apenas perto dos pontos matematicamente calculados e atualmente visíveis, enquanto os modos **MOVER** e **ZOOM** estão desativados. As interseções automáticas continuam limitadas a `f(x)` e `g(x)` polinomiais de grau até 2, e as raízes e os vértices continuam sendo destacados apenas nos polinômios de grau até 2. A ampliação não aumenta a precisão numérica dos cálculos, apenas melhora a inspeção visual do ponto.
+
+## Controles de navegação da versão 2.9
+
+A antiga faixa cinza de ferramentas do Matplotlib foi removida da área visível do gráfico. Os controles estão integrados ao cabeçalho escuro da aplicação:
+
+- **MOVER:** clique para ativar e arraste o gráfico com o mouse. Clique novamente para desativar.
+- **ZOOM:** clique para ativar e arraste um retângulo sobre o gráfico para ampliar a região. Clique novamente para desativar.
+- **RESTAURAR VISÃO:** recupera o enquadramento original, desativa a ferramenta ativa e remove a seleção de um ponto notável.
+
+Os botões **MOVER** e **ZOOM** são mutuamente exclusivos. Com ambos desativados, o cursor de precisão e o clique para zoom inteligente continuam funcionando. O botão **SALVAR GRÁFICO**, no painel lateral, mantém a exportação em PNG. Os controles da interface não aparecem nas imagens exportadas.
 
 ## Tecnologias utilizadas
 
@@ -124,7 +135,7 @@ Use `*` para multiplicar, como em `2*x`. Tanto `^` quanto `**` representam potê
 
 - **`matematica.py`** — cálculos de raízes, discriminante, vértice e interseções.
 - **`visualizacao.py`** — desenho simultâneo de até cinco curvas e seus pontos notáveis.
-- **`interface.py`** — controles, cursor de precisão, zoom inteligente e exportação.
+- **`interface.py`** — controles de navegação minimalistas, cursor de precisão, zoom inteligente e exportação.
 - **`expressoes.py`** — avaliação controlada das expressões matemáticas.
 - **`cursor_precisao.py`** — cálculo e apresentação das coordenadas durante o movimento do mouse.
 - **`explorador.py`** — versão de terminal.
@@ -137,7 +148,7 @@ Use `*` para multiplicar, como em `2*x`. Tanto `^` quanto `**` representam potê
 
 ## Próximos passos
 
-- Ampliar a análise numérica de funções não polinomiais e as interseções entre outros pares de curvas.
+- Permitir detectar interseções entre diferentes pares de funções, incluindo expressões não polinomiais, na próxima versão.
 
 ## Autor
 
