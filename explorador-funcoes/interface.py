@@ -1,6 +1,6 @@
 import math
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -196,6 +196,130 @@ class BotaoModo(tk.Canvas):
     def definir_selecionado(self, selecionado):
         self.itemconfigure(self.fundo, fill=DESTAQUE if selecionado else CAMPO)
         self.itemconfigure(self.rotulo, fill=FUNDO if selecionado else SUAVE)
+
+
+class SeletorArredondado(tk.Canvas):
+    def __init__(self, parent, variavel, opcoes, comando):
+        super().__init__(
+            parent, bg=PAINEL, width=115, height=40,
+            highlightthickness=0, bd=0, cursor="hand2", takefocus=True,
+        )
+        self.variavel = variavel
+        self.opcoes = tuple(opcoes)
+        self.comando = comando
+        self.habilitado = True
+        self.sobre = False
+        self.focado = False
+        self.rastro = self.variavel.trace_add("write", self.atualizar_rotulo)
+        self.menu = tk.Menu(
+            self, tearoff=False, bg=CAMPO, fg=TEXTO,
+            activebackground="#314761", activeforeground=TEXTO,
+            bd=1, relief="flat", font=("DejaVu Sans", 10),
+        )
+        self.bind("<Configure>", self.redesenhar)
+        self.bind("<Enter>", self.entrar)
+        self.bind("<Leave>", self.sair)
+        self.bind("<FocusIn>", self.focar)
+        self.bind("<FocusOut>", self.desfocar)
+        self.bind("<Button-1>", self.abrir)
+        self.bind("<Return>", self.abrir)
+        self.bind("<space>", self.abrir)
+        self.bind("<Down>", self.selecionar_seguinte)
+        self.bind("<Up>", self.selecionar_anterior)
+
+    def redesenhar(self, _evento=None):
+        self.delete("all")
+        largura = self.winfo_width()
+        altura = self.winfo_height()
+        if largura < 40 or altura < 12:
+            return
+        destaque = self.habilitado and (self.sobre or self.focado)
+        self.create_polygon(
+            *pontos_arredondados(1, 1, largura - 1, altura - 1, 12),
+            fill="#253750" if destaque else CAMPO,
+            outline=DESTAQUE if destaque else BORDA,
+            width=1.5 if destaque else 1,
+        )
+        cor = TEXTO if self.habilitado else SUAVE
+        self.create_text(
+            13, altura / 2, text=f"{self.variavel.get()}(x)",
+            fill=cor, font=("DejaVu Sans", 10, "bold"), anchor="w",
+        )
+        x = largura - 18
+        self.create_line(
+            x - 5, altura / 2 - 2, x, altura / 2 + 3,
+            x + 5, altura / 2 - 2,
+            fill=DESTAQUE if destaque else SUAVE,
+            width=2, capstyle="round", joinstyle="round",
+        )
+
+    def atualizar_rotulo(self, *_args):
+        self.redesenhar()
+
+    def atualizar_opcoes(self, opcoes, habilitado):
+        self.opcoes = tuple(opcoes)
+        self.habilitado = habilitado
+        self.configure(cursor="hand2" if habilitado else "arrow")
+        self.redesenhar()
+
+    def selecionar(self, valor):
+        if not self.habilitado or valor not in self.opcoes:
+            return
+        if self.variavel.get() == valor:
+            return
+        self.variavel.set(valor)
+        self.comando(None)
+
+    def abrir(self, _evento=None):
+        if not self.habilitado:
+            return "break"
+        self.focus_set()
+        self.menu.delete(0, "end")
+        for nome in self.opcoes:
+            self.menu.add_command(
+                label=f"{nome}(x)",
+                command=lambda valor=nome: self.selecionar(valor),
+            )
+        try:
+            self.menu.tk_popup(self.winfo_rootx(), self.winfo_rooty() + self.winfo_height())
+        finally:
+            self.menu.grab_release()
+        return "break"
+
+    def selecionar_seguinte(self, _evento=None):
+        if self.habilitado and self.opcoes:
+            atual = self.variavel.get()
+            indice = self.opcoes.index(atual) if atual in self.opcoes else -1
+            self.selecionar(self.opcoes[(indice + 1) % len(self.opcoes)])
+        return "break"
+
+    def selecionar_anterior(self, _evento=None):
+        if self.habilitado and self.opcoes:
+            atual = self.variavel.get()
+            indice = self.opcoes.index(atual) if atual in self.opcoes else 0
+            self.selecionar(self.opcoes[(indice - 1) % len(self.opcoes)])
+        return "break"
+
+    def entrar(self, _evento):
+        self.sobre = True
+        self.redesenhar()
+
+    def sair(self, _evento):
+        self.sobre = False
+        self.redesenhar()
+
+    def focar(self, _evento):
+        self.focado = True
+        self.redesenhar()
+
+    def desfocar(self, _evento):
+        self.focado = False
+        self.redesenhar()
+
+    def destroy(self):
+        self.variavel.trace_remove("write", self.rastro)
+        self.menu.destroy()
+        super().destroy()
 
 
 class BotaoRecolher(tk.Canvas):
@@ -759,20 +883,6 @@ class ExploradorApp:
         ).pack(anchor="w", pady=(0, 6))
         linha_seletores = tk.Frame(self.grupo_selecao_intersecoes, bg=PAINEL)
         linha_seletores.pack(fill="x")
-        estilo = ttk.Style(self.janela)
-        estilo.configure(
-            "Intersecoes.TCombobox", fieldbackground=CAMPO,
-            background=CAMPO, foreground=TEXTO, arrowcolor=SUAVE,
-            bordercolor=BORDA, lightcolor=BORDA, darkcolor=BORDA,
-            padding=6,
-        )
-        estilo.map(
-            "Intersecoes.TCombobox",
-            fieldbackground=[("readonly", CAMPO)],
-            foreground=[("readonly", TEXTO)],
-            selectbackground=[("readonly", CAMPO)],
-            selectforeground=[("readonly", TEXTO)],
-        )
         self.seletores_intersecoes = []
         for indice, variavel in enumerate((
             self.primeira_intersecao, self.segunda_intersecao,
@@ -785,13 +895,10 @@ class ExploradorApp:
             self.texto(
                 coluna, "Primeira" if indice == 0 else "Segunda", 9, SUAVE,
             ).pack(anchor="w", pady=(0, 4))
-            seletor = ttk.Combobox(
-                coluna, textvariable=variavel, values=("f", "g"),
-                state="readonly", width=6, style="Intersecoes.TCombobox",
-                font=("DejaVu Sans", 10),
+            seletor = SeletorArredondado(
+                coluna, variavel, ("f", "g"), self.alterar_par_intersecoes,
             )
             seletor.pack(fill="x")
-            seletor.bind("<<ComboboxSelected>>", self.alterar_par_intersecoes)
             self.seletores_intersecoes.append(seletor)
 
         self.grupos_funcoes = {}
@@ -947,9 +1054,7 @@ class ExploradorApp:
     def atualizar_seletores_intersecoes(self):
         nomes = tuple(self.nomes_ativos)
         for seletor in self.seletores_intersecoes:
-            seletor.configure(
-                values=nomes, state="readonly" if len(nomes) >= 2 else "disabled",
-            )
+            seletor.atualizar_opcoes(nomes, len(nomes) >= 2)
         if len(nomes) < 2:
             return
         if self.primeira_intersecao.get() not in nomes:
