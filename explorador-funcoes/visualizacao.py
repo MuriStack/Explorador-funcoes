@@ -2,6 +2,7 @@ import math
 
 import matplotlib.pyplot as plt
 
+from expressoes import Expressao
 from matematica import (
     avaliar_polinomio,
     calcular_intersecoes_polinomios,
@@ -29,15 +30,20 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
     eixo.set_facecolor(cores["painel"])
     xs = [inicio + (fim - inicio) * indice / 400 for indice in range(401)]
 
-    for nome, polinomio in funcoes:
+    for nome, funcao in funcoes:
         cor = cores[nome]
-        ys = [avaliar_polinomio(polinomio, x) for x in xs]
-        if not all(math.isfinite(y) for y in ys):
+        polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
+        ys = [
+            funcao.calcular(x) if isinstance(funcao, Expressao)
+            else avaliar_polinomio(funcao, x)
+            for x in xs
+        ]
+        if not any(math.isfinite(y) for y in ys):
             plt.close(figura)
-            raise ValueError("Os valores do gráfico são grandes demais.")
+            raise ValueError(f"A função {nome}(x) não possui valores reais no intervalo escolhido.")
         eixo.plot(xs, ys, color=cor, linewidth=2.5, label=f"{nome}(x)")
 
-        for raiz in raizes_reais(polinomio):
+        for raiz in raizes_reais(polinomio) if polinomio is not None else []:
             if inicio <= raiz <= fim:
                 eixo.scatter(raiz, 0, color=cor, marker="X", s=100, zorder=5,
                              label=f"Raiz de {nome}")
@@ -45,7 +51,7 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
                               xytext=(9, 12), textcoords="offset points",
                               color=cor, fontsize=9)
 
-        ponto_vertice = vertice(polinomio)
+        ponto_vertice = vertice(polinomio) if polinomio is not None else None
         if ponto_vertice is not None:
             vx, vy = ponto_vertice
             if inicio <= vx <= fim:
@@ -55,9 +61,13 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
                               xytext=(10, -22), textcoords="offset points",
                               color=cores["vertice"], fontsize=9)
 
-    if len(funcoes) == 2:
+    polinomios = [
+        funcao.polinomio if isinstance(funcao, Expressao) else funcao
+        for _, funcao in funcoes
+    ]
+    if len(polinomios) == 2 and all(p is not None for p in polinomios):
         situacao, intersecoes = calcular_intersecoes_polinomios(
-            funcoes[0][1], funcoes[1][1]
+            polinomios[0], polinomios[1]
         )
         if situacao == "pontos":
             for indice, (x, y) in enumerate(intersecoes):
@@ -91,12 +101,16 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
 
     if not tema_escuro:
         linhas = []
-        for nome, polinomio in funcoes:
-            linhas.extend([
-                f"{nome}(x): {descrever_comportamento(polinomio)}",
-                f"Raízes: {descrever_raizes_polinomio(polinomio)}",
-                "",
-            ])
+        for nome, funcao in funcoes:
+            polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
+            if polinomio is None:
+                linhas.extend([f"{nome}(x): {funcao.texto}", ""])
+            else:
+                linhas.extend([
+                    f"{nome}(x): {descrever_comportamento(polinomio)}",
+                    f"Raízes: {descrever_raizes_polinomio(polinomio)}",
+                    "",
+                ])
         eixo.text(0.02, 0.98, "\n".join(linhas).strip(),
                   transform=eixo.transAxes, va="top",
                   bbox=dict(boxstyle="round", facecolor="white", alpha=0.9))

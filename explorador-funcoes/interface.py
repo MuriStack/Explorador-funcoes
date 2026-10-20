@@ -5,6 +5,7 @@ from tkinter import filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
+from expressoes import Expressao
 from matematica import (
     calcular_intersecoes_polinomios,
     criar_polinomio,
@@ -213,6 +214,8 @@ class ExploradorApp:
         self.botoes_tipo = {}
         self.rotulos = {}
         self.campos_c = {}
+        self.campos_ab = {}
+        self.campos_expressao = {}
 
         self.criar_interface()
         self.gerar_grafico()
@@ -253,21 +256,31 @@ class ExploradorApp:
 
         selecao = tk.Frame(grupo, bg=PAINEL)
         selecao.pack(fill="x")
+        selecao.columnconfigure(0, weight=1, uniform="tipos")
+        selecao.columnconfigure(1, weight=1, uniform="tipos")
         selecao_tipo = {}
-        for tipo in ("Afim", "Quadrática"):
+        for indice, tipo in enumerate(("Afim", "Quadrática")):
             botao = BotaoModo(
                 selecao, tipo, lambda n=nome, t=tipo: self.alterar_tipo(n, t)
             )
-            botao.pack(
-                side="left", fill="x", expand=True,
-                padx=(0, 5) if tipo == "Afim" else (5, 0),
+            botao.grid(
+                row=0, column=indice, sticky="ew",
+                padx=(0, 4) if indice == 0 else (4, 0),
             )
             selecao_tipo[tipo] = botao
+
+        botao_expressao = BotaoModo(
+            selecao, "Expressão", lambda n=nome: self.alterar_tipo(n, "Expressão")
+        )
+        botao_expressao.grid(
+            row=1, column=0, columnspan=2, sticky="ew", pady=(7, 0)
+        )
+        selecao_tipo["Expressão"] = botao_expressao
         self.botoes_tipo[nome] = selecao_tipo
         selecao_tipo["Afim"].definir_selecionado(True)
 
         a, b, c = valores
-        self.criar_par_de_campos(
+        self.campos_ab[nome] = self.criar_par_de_campos(
             grupo,
             ((f"a{nome}", "a · angular", a),
              (f"b{nome}", "b · linear", b)),
@@ -281,6 +294,17 @@ class ExploradorApp:
         entrada_c.bind_enter(self.gerar_grafico)
         self.campos[f"c{nome}"] = entrada_c
         self.campos_c[nome] = linha_c
+        linha_expressao = tk.Frame(grupo, bg=PAINEL)
+        self.texto(
+            linha_expressao, "Escreva a função de x", 9, SUAVE
+        ).pack(anchor="w", pady=(4, 3))
+        campo = CampoArredondado(
+            linha_expressao, "sin(x)" if nome == "f" else "cos(x)"
+        )
+        campo.pack(fill="x")
+        campo.bind_enter(self.gerar_grafico)
+        self.campos[f"expressao_{nome}"] = campo
+        self.campos_expressao[nome] = linha_expressao
         grupo.pack(fill="x")
         return grupo
 
@@ -289,7 +313,7 @@ class ExploradorApp:
         topo.pack(fill="x")
         self.texto(topo, "EXPLORADOR DE FUNÇÕES", 20, TEXTO, True).pack(anchor="w")
         self.texto(
-            topo, "Laboratório interativo de funções afins e quadráticas", 10, SUAVE
+            topo, "Laboratório interativo de gráficos matemáticos", 10, SUAVE
         ).pack(anchor="w", pady=(5, 0))
 
         corpo = tk.Frame(self.janela, bg=FUNDO, padx=24, pady=5)
@@ -406,14 +430,21 @@ class ExploradorApp:
         self.tipos[nome] = tipo
         for nome_tipo, botao in self.botoes_tipo[nome].items():
             botao.definir_selecionado(nome_tipo == tipo)
-        if tipo == "Quadrática":
-            self.campos_c[nome].pack(fill="x", pady=(4, 0))
-            self.rotulos[f"a{nome}"].configure(text="a · x²")
-            self.rotulos[f"b{nome}"].configure(text="b · x")
-        else:
+        if tipo == "Expressão":
+            self.campos_ab[nome].pack_forget()
             self.campos_c[nome].pack_forget()
-            self.rotulos[f"a{nome}"].configure(text="a · angular")
-            self.rotulos[f"b{nome}"].configure(text="b · linear")
+            self.campos_expressao[nome].pack(fill="x", pady=(4, 0))
+        else:
+            self.campos_expressao[nome].pack_forget()
+            self.campos_ab[nome].pack(fill="x", pady=(5, 0))
+            if tipo == "Quadrática":
+                self.campos_c[nome].pack(fill="x", pady=(4, 0))
+                self.rotulos[f"a{nome}"].configure(text="a · x²")
+                self.rotulos[f"b{nome}"].configure(text="b · x")
+            else:
+                self.campos_c[nome].pack_forget()
+                self.rotulos[f"a{nome}"].configure(text="a · angular")
+                self.rotulos[f"b{nome}"].configure(text="b · linear")
         if nome == "f" or self.modo == "duas":
             self.gerar_grafico()
 
@@ -424,6 +455,8 @@ class ExploradorApp:
         return valor
 
     def obter_polinomio(self, nome):
+        if self.tipos[nome] == "Expressão":
+            return Expressao(self.campos[f"expressao_{nome}"].get())
         a = self.ler_numero(f"a{nome}")
         b = self.ler_numero(f"b{nome}")
         c = self.ler_numero(f"c{nome}") if self.tipos[nome] == "Quadrática" else 0
@@ -436,6 +469,16 @@ class ExploradorApp:
         return f"{valor:.4f}".rstrip("0").rstrip(".")
 
     def descrever_polinomio(self, nome, polinomio):
+        if isinstance(polinomio, Expressao):
+            if polinomio.polinomio is None:
+                return (
+                    f"{nome}(x) = {polinomio.texto}\n"
+                    "Análise algébrica disponível para polinômios de grau até 2."
+                )
+            descricao = self.descrever_polinomio(nome, polinomio.polinomio)
+            linhas = descricao.split("\n")
+            linhas[0] = f"{nome}(x) = {polinomio.texto}"
+            return "\n".join(linhas)
         a, b, c = polinomio
         numero = self.formatar_numero
         if a == 0:
@@ -471,7 +514,10 @@ class ExploradorApp:
             if fim - inicio > 1000:
                 raise ValueError("O intervalo deve ter até 1000 unidades.")
 
-            for _, polinomio in funcoes:
+            for _, funcao in funcoes:
+                polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
+                if polinomio is None:
+                    continue
                 valores = [discriminante(polinomio)]
                 valores.extend(vertice(polinomio) or ())
                 for valor in valores:
@@ -479,9 +525,13 @@ class ExploradorApp:
                         raise ValueError("Os coeficientes geraram números muito grandes.")
 
             intersecoes = None
-            if len(funcoes) == 2:
+            polinomios = [
+                funcao.polinomio if isinstance(funcao, Expressao) else funcao
+                for _, funcao in funcoes
+            ]
+            if len(funcoes) == 2 and all(p is not None for p in polinomios):
                 intersecoes = calcular_intersecoes_polinomios(
-                    funcoes[0][1], funcoes[1][1]
+                    polinomios[0], polinomios[1]
                 )
                 if not all(
                     math.isfinite(valor)
@@ -514,6 +564,8 @@ class ExploradorApp:
                     for x, y in pontos
                 )
             descricoes.append(f"INTERSEÇÕES\n{texto_intersecao}")
+        if len(funcoes) == 2 and intersecoes is None:
+            descricoes.append("INTERSEÇÕES\nCálculo disponível para polinômios de grau até 2.")
         self.resultado.set("\n\n".join(descricoes))
 
         if self.toolbar is not None:
