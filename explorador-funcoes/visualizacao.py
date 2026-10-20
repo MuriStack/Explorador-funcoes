@@ -13,6 +13,11 @@ from matematica import (
 )
 
 
+def identificar(artista, categoria, nome=None):
+    artista.set_gid(f"{categoria}:{nome}" if nome else categoria)
+    return artista
+
+
 def desenhar_funcoes(
     funcoes, inicio, fim, mostrar=False, tema_escuro=True,
     intersecoes=None, par_intersecoes=("f", "g"), raizes=None,
@@ -47,7 +52,10 @@ def desenhar_funcoes(
         if not any(math.isfinite(y) for y in ys):
             plt.close(figura)
             raise ValueError(f"A função {nome}(x) não possui valores reais no intervalo escolhido.")
-        eixo.plot(xs, ys, color=cor, linewidth=2.5, label=f"{nome}(x)")
+        identificar(
+            eixo.plot(xs, ys, color=cor, linewidth=2.5, label=f"{nome}(x)")[0],
+            "curva", nome,
+        )
 
         lista_raizes = (
             raizes[nome][1] if raizes is not None
@@ -55,26 +63,30 @@ def desenhar_funcoes(
         )
         raizes_visiveis = [raiz for raiz in lista_raizes if inicio <= raiz <= fim]
         for indice, raiz in enumerate(raizes_visiveis):
-            eixo.scatter(
+            identificar(eixo.scatter(
                 raiz, 0, color=cor, marker="X", s=100, zorder=5,
                 label=f"Raiz de {nome}" if indice == 0 else None,
-            )
+            ), "raiz", nome)
             if len(raizes_visiveis) <= 6:
-                eixo.annotate(
+                identificar(eixo.annotate(
                     f"({raiz:.4f}, 0)", (raiz, 0),
                     xytext=(9, 12), textcoords="offset points",
                     color=cor, fontsize=9,
-                )
+                ), "raiz", nome)
 
         ponto_vertice = vertice(polinomio) if polinomio is not None else None
         if ponto_vertice is not None:
             vx, vy = ponto_vertice
             if inicio <= vx <= fim:
-                eixo.scatter(vx, vy, color=cores["vertice"], marker="D",
-                             s=85, zorder=6, label=f"Vértice de {nome}")
-                eixo.annotate(f"V ({vx:.2f}, {vy:.2f})", (vx, vy),
-                              xytext=(10, -22), textcoords="offset points",
-                              color=cores["vertice"], fontsize=9)
+                identificar(eixo.scatter(
+                    vx, vy, color=cores["vertice"], marker="D", s=85,
+                    zorder=6, label=f"Vértice de {nome}",
+                ), "vertice", nome)
+                identificar(eixo.annotate(
+                    f"V ({vx:.2f}, {vy:.2f})", (vx, vy),
+                    xytext=(10, -22), textcoords="offset points",
+                    color=cores["vertice"], fontsize=9,
+                ), "vertice", nome)
 
     if intersecoes is None and len(funcoes) >= 2:
         polinomios = [
@@ -90,20 +102,20 @@ def desenhar_funcoes(
             if inicio <= x <= fim and math.isfinite(x) and math.isfinite(y)
         ]
         for indice, (x, y) in enumerate(pontos):
-            eixo.scatter(
+            identificar(eixo.scatter(
                 x, y, color=cores["intersecao"], s=100,
                 zorder=7,
                 label=(
                     f"Interseção {par_intersecoes[0]}/{par_intersecoes[1]}"
                     if indice == 0 else None
                 ),
-            )
+            ), "intersecao")
             if len(pontos) <= 6:
-                eixo.annotate(
+                identificar(eixo.annotate(
                     f"({x:.4f}, {y:.4f})", (x, y),
                     xytext=(10, 12), textcoords="offset points",
                     color=cores["intersecao"], fontsize=9,
-                )
+                ), "intersecao")
 
     eixo.axhline(0, color=cores["texto"], alpha=0.55, linewidth=1)
     eixo.axvline(0, color=cores["texto"], alpha=0.55, linewidth=1)

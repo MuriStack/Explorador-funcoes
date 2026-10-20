@@ -322,6 +322,84 @@ class SeletorArredondado(tk.Canvas):
         super().destroy()
 
 
+class AlternadorVisibilidade(tk.Canvas):
+    def __init__(self, parent, texto, variavel, comando):
+        super().__init__(
+            parent, bg=PAINEL, width=125, height=36,
+            highlightthickness=0, bd=0, cursor="hand2", takefocus=True,
+        )
+        self.texto = texto
+        self.variavel = variavel
+        self.comando = comando
+        self.habilitado = True
+        self.sobre = False
+        self.rastro = variavel.trace_add("write", self.alterou_variavel)
+        self.bind("<Configure>", self.redesenhar)
+        self.bind("<Enter>", self.entrar)
+        self.bind("<Leave>", self.sair)
+        self.bind("<Button-1>", self.alternar)
+        self.bind("<Return>", self.alternar)
+        self.bind("<space>", self.alternar)
+
+    def redesenhar(self, _evento=None):
+        self.delete("all")
+        largura, altura = self.winfo_width(), self.winfo_height()
+        if largura < 30 or altura < 12:
+            return
+        ativo = self.variavel.get()
+        destaque = self.habilitado and self.sobre
+        self.create_polygon(
+            *pontos_arredondados(1, 1, largura - 1, altura - 1, 11),
+            fill="#263a52" if destaque else CAMPO,
+            outline=DESTAQUE if destaque else BORDA,
+            width=1,
+        )
+        self.create_oval(
+            9, altura / 2 - 8, 25, altura / 2 + 8,
+            fill=DESTAQUE if ativo and self.habilitado else PAINEL,
+            outline=DESTAQUE if ativo and self.habilitado else SUAVE,
+            width=1.5,
+        )
+        if ativo:
+            self.create_line(
+                13, altura / 2, 16, altura / 2 + 3,
+                21, altura / 2 - 4,
+                fill=FUNDO if self.habilitado else SUAVE,
+                width=2, capstyle="round", joinstyle="round",
+            )
+        self.create_text(
+            33, altura / 2, text=self.texto, anchor="w",
+            fill=TEXTO if self.habilitado else SUAVE,
+            font=("DejaVu Sans", 9),
+        )
+
+    def alterou_variavel(self, *_args):
+        self.redesenhar()
+
+    def definir_habilitado(self, habilitado):
+        self.habilitado = habilitado
+        self.configure(cursor="hand2" if habilitado else "arrow")
+        self.redesenhar()
+
+    def alternar(self, _evento=None):
+        if self.habilitado:
+            self.variavel.set(not self.variavel.get())
+            self.comando()
+        return "break"
+
+    def entrar(self, _evento):
+        self.sobre = True
+        self.redesenhar()
+
+    def sair(self, _evento):
+        self.sobre = False
+        self.redesenhar()
+
+    def destroy(self):
+        self.variavel.trace_remove("write", self.rastro)
+        super().destroy()
+
+
 class BotaoRecolher(tk.Canvas):
     def __init__(self, parent, comando):
         super().__init__(
@@ -460,10 +538,12 @@ class BarraRolagemMinimalista(tk.Canvas):
 
 
 class CursorPrecisao:
-    def __init__(self, canvas, funcoes, toolbar, status):
+    def __init__(self, canvas, funcoes, toolbar, status, visibilidade_funcoes, visibilidade_elementos):
         self.canvas = canvas
         self.eixo = canvas.figure.axes[0]
         self.funcoes = funcoes
+        self.visibilidade_funcoes = visibilidade_funcoes
+        self.visibilidade_elementos = visibilidade_elementos
         self.toolbar = toolbar
         self.status = status
         self.status_base = status.get()
@@ -508,6 +588,9 @@ class CursorPrecisao:
         self.ocultar(restaurar_status=True)
 
     def movimentar(self, evento):
+        if not self.visibilidade_elementos["curvas"].get():
+            self.ocultar(restaurar_status=True)
+            return
         if getattr(self, "foco", None) is not None and self.foco.selecionado is not None:
             self.ocultar()
             return
@@ -528,6 +611,8 @@ class CursorPrecisao:
 
         melhor = None
         for indice, (nome, funcao) in enumerate(self.funcoes):
+            if not self.visibilidade_funcoes[nome].get():
+                continue
             try:
                 if isinstance(funcao, Expressao):
                     y = funcao.calcular(x)
@@ -571,12 +656,18 @@ class CursorPrecisao:
 
 
 class FocoPontosNotaveis:
-    def __init__(self, canvas, funcoes, intersecoes, par, toolbar, cursor, status, raizes=None):
+    def __init__(
+        self, canvas, funcoes, intersecoes, par, toolbar, cursor, status,
+        raizes=None, visibilidade_funcoes=None, visibilidade_elementos=None,
+    ):
         self.canvas = canvas
         self.eixo = canvas.figure.axes[0]
         self.toolbar = toolbar
         self.cursor = cursor
         self.status = status
+        self.par = par
+        self.visibilidade_funcoes = visibilidade_funcoes
+        self.visibilidade_elementos = visibilidade_elementos
         self.limites_iniciais = (self.eixo.get_xlim(), self.eixo.get_ylim())
         self.selecionado = None
         self.pontos = []
@@ -587,7 +678,10 @@ class FocoPontosNotaveis:
 
         if intersecoes is not None and intersecoes[0] == "pontos":
             for x, y in intersecoes[1]:
-                self.registrar(f"Interseção {par[0]}/{par[1]}", x, y, "#4ade80")
+                self.registrar(
+                    f"Interseção {par[0]}/{par[1]}", x, y, "#4ade80",
+                    "intersecoes",
+                )
 
         for nome, funcao in funcoes:
             polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
@@ -595,13 +689,18 @@ class FocoPontosNotaveis:
             if polinomio is not None:
                 ponto_vertice = vertice(polinomio)
                 if ponto_vertice is not None:
-                    self.registrar(f"Vértice de {nome}(x)", *ponto_vertice, cor)
+                    self.registrar(
+                        f"Vértice de {nome}(x)", *ponto_vertice, cor,
+                        "vertices", nome,
+                    )
             lista_raizes = (
                 raizes[nome][1] if raizes is not None
                 else raizes_reais(polinomio) if polinomio is not None else []
             )
             for raiz in lista_raizes:
-                self.registrar(f"Raiz de {nome}(x)", raiz, 0.0, cor)
+                self.registrar(
+                    f"Raiz de {nome}(x)", raiz, 0.0, cor, "raizes", nome,
+                )
 
         self.marcador, = self.eixo.plot(
             [], [], marker="o", markersize=12, linestyle="None",
@@ -620,12 +719,27 @@ class FocoPontosNotaveis:
         )
         self.conexao = self.canvas.mpl_connect("button_press_event", self.clicar)
 
-    def registrar(self, descricao, x, y, cor):
+    def registrar(self, descricao, x, y, cor, categoria, nome=None):
         if not math.isfinite(x) or not math.isfinite(y):
             return
         limite_x = self.eixo.get_xlim()
         if min(limite_x) <= x <= max(limite_x):
-            self.pontos.append((descricao, x, y, cor))
+            self.pontos.append((descricao, x, y, cor, categoria, nome))
+
+    def ponto_visivel(self, ponto):
+        _, _, _, _, categoria, nome = ponto
+        if not self.visibilidade_elementos[categoria].get():
+            return False
+        if categoria == "intersecoes":
+            return all(self.visibilidade_funcoes[n].get() for n in self.par)
+        return nome is None or self.visibilidade_funcoes[nome].get()
+
+    def atualizar_visibilidade(self):
+        if self.selecionado is not None and not self.ponto_visivel(self.selecionado):
+            self.selecionado = None
+            self.marcador.set_visible(False)
+            self.etiqueta.set_visible(False)
+            self.cursor.ocultar(restaurar_status=True)
 
     def clicar(self, evento):
         if (
@@ -639,7 +753,10 @@ class FocoPontosNotaveis:
 
         candidato = None
         menor_distancia = 16.0
-        for descricao, x, y, cor in self.pontos:
+        for ponto in self.pontos:
+            if not self.ponto_visivel(ponto):
+                continue
+            descricao, x, y, cor = ponto[:4]
             px, py = self.eixo.transData.transform((x, y))
             if not math.isfinite(px) or not math.isfinite(py):
                 continue
@@ -648,12 +765,12 @@ class FocoPontosNotaveis:
             distancia = math.hypot(evento.x - px, evento.y - py)
             if distancia < menor_distancia:
                 menor_distancia = distancia
-                candidato = (descricao, x, y, cor)
+                candidato = ponto
 
         if candidato is None:
             return
 
-        descricao, x, y, cor = candidato
+        descricao, x, y, cor = candidato[:4]
         self.cursor.ocultar()
         self.selecionado = candidato
         self.eixo.set_xlim(x - self.amplitude(self.eixo.get_xlim()) / 14,
@@ -691,7 +808,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.1")
+        self.janela.title("Explorador de Funções 3.3")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -706,6 +823,13 @@ class ExploradorApp:
         self.quantidade_funcoes = 2
         self.primeira_intersecao = tk.StringVar(value="f")
         self.segunda_intersecao = tk.StringVar(value="g")
+        self.visibilidade_elementos = {
+            nome: tk.BooleanVar(value=True)
+            for nome in ("curvas", "raizes", "vertices", "intersecoes", "grade", "legenda")
+        }
+        self.visibilidade_funcoes = {
+            nome: tk.BooleanVar(value=True) for nome in "fghij"
+        }
         self.tipos = {nome: "Afim" for nome in "fghij"}
         self.botoes_tipo = {}
         self.rotulos = {}
@@ -804,6 +928,77 @@ class ExploradorApp:
         grupo.pack(fill="x")
         return grupo
 
+    def criar_alternadores(self, parent, opcoes):
+        linha = None
+        botoes = {}
+        for indice, (nome, titulo, variavel) in enumerate(opcoes):
+            if indice % 2 == 0:
+                linha = tk.Frame(parent, bg=PAINEL)
+                linha.pack(fill="x", pady=(0, 6))
+            botao = AlternadorVisibilidade(
+                linha, titulo, variavel, self.aplicar_visibilidade,
+            )
+            botao.pack(
+                side="left", fill="x", expand=True,
+                padx=(0, 4) if indice % 2 == 0 else (4, 0),
+            )
+            botoes[nome] = botao
+        return botoes
+
+    def atualizar_botoes_visibilidade(self):
+        for nome, botao in self.botoes_visibilidade_funcoes.items():
+            botao.definir_habilitado(nome in self.nomes_ativos)
+
+    def aplicar_visibilidade(self):
+        if self.figura is None:
+            return
+        eixo = self.figura.axes[0]
+        visiveis = self.visibilidade_elementos
+        funcoes = self.visibilidade_funcoes
+        par = (self.primeira_intersecao.get(), self.segunda_intersecao.get())
+        for artista in eixo.get_children():
+            identificador = artista.get_gid()
+            if not identificador:
+                continue
+            categoria, _, nome = identificador.partition(":")
+            if categoria == "curva":
+                mostrar = visiveis["curvas"].get() and funcoes[nome].get()
+            elif categoria in ("raiz", "vertice"):
+                chave = "raizes" if categoria == "raiz" else "vertices"
+                mostrar = visiveis[chave].get() and funcoes[nome].get()
+            elif categoria == "intersecao":
+                mostrar = (
+                    visiveis["intersecoes"].get()
+                    and all(funcoes[n].get() for n in par)
+                )
+            else:
+                continue
+            artista.set_visible(mostrar)
+
+        eixo.grid(visiveis["grade"].get())
+        legenda_antiga = eixo.get_legend()
+        if legenda_antiga is not None:
+            legenda_antiga.remove()
+        if visiveis["legenda"].get():
+            handles, labels = eixo.get_legend_handles_labels()
+            unicos = {}
+            for handle, label in zip(handles, labels):
+                if handle.get_visible():
+                    unicos.setdefault(label, handle)
+            if unicos:
+                legenda = eixo.legend(
+                    unicos.values(), unicos.keys(), loc="upper right",
+                    facecolor=PAINEL, edgecolor=BORDA, fontsize=9,
+                )
+                for texto in legenda.get_texts():
+                    texto.set_color(TEXTO)
+
+        if self.cursor_precisao is not None:
+            self.cursor_precisao.ocultar(restaurar_status=True)
+        if self.foco_pontos is not None:
+            self.foco_pontos.atualizar_visibilidade()
+        self.canvas.draw_idle()
+
     def criar_interface(self):
         topo = tk.Frame(self.janela, bg=FUNDO, padx=28, pady=20)
         topo.pack(fill="x")
@@ -869,12 +1064,16 @@ class ExploradorApp:
 
         controles = tk.Frame(interno, bg=PAINEL)
         controles.pack(fill="x", pady=(8, 3))
-        BotaoArredondado(
+        botao_adicionar = BotaoArredondado(
             controles, "+ ADICIONAR", self.adicionar_funcao, contorno=True
-        ).pack(side="left", fill="x", expand=True, padx=(0, 4))
-        BotaoArredondado(
+        )
+        botao_adicionar.configure(width=125)
+        botao_adicionar.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        botao_remover = BotaoArredondado(
             controles, "− REMOVER", self.remover_funcao, contorno=True
-        ).pack(side="left", fill="x", expand=True, padx=(4, 0))
+        )
+        botao_remover.configure(width=125)
+        botao_remover.pack(side="left", fill="x", expand=True, padx=(4, 0))
         self.indicador_funcoes = self.texto(interno, "2 de 5 funções", 9, SUAVE)
         self.indicador_funcoes.pack(anchor="w", pady=(2, 0))
 
@@ -903,6 +1102,32 @@ class ExploradorApp:
             )
             seletor.pack(fill="x")
             self.seletores_intersecoes.append(seletor)
+
+        grupo_visibilidade = tk.Frame(interno, bg=PAINEL)
+        grupo_visibilidade.pack(fill="x", pady=(15, 0))
+        self.texto(
+            grupo_visibilidade, "ELEMENTOS VISÍVEIS", 9, SUAVE, True,
+        ).pack(anchor="w", pady=(0, 6))
+        elementos = (
+            ("curvas", "Curvas"),
+            ("raizes", "Raízes"),
+            ("vertices", "Vértices"),
+            ("intersecoes", "Interseções"),
+            ("grade", "Grade"),
+            ("legenda", "Legenda"),
+        )
+        self.criar_alternadores(
+            grupo_visibilidade,
+            ((nome, titulo, self.visibilidade_elementos[nome]) for nome, titulo in elementos),
+        )
+        self.texto(
+            grupo_visibilidade, "FUNÇÕES INDIVIDUAIS", 9, SUAVE, True,
+        ).pack(anchor="w", pady=(12, 6))
+        self.botoes_visibilidade_funcoes = self.criar_alternadores(
+            grupo_visibilidade,
+            ((nome, f"{nome}(x)", self.visibilidade_funcoes[nome]) for nome in "fghij"),
+        )
+        self.atualizar_botoes_visibilidade()
 
         self.grupos_funcoes = {}
         for nome, valores in (
@@ -1051,6 +1276,7 @@ class ExploradorApp:
         self.botao_uma.definir_selecionado(quantidade == 1)
         self.botao_duas.definir_selecionado(quantidade == 2)
         self.indicador_funcoes.configure(text=f"{quantidade} de 5 funções")
+        self.atualizar_botoes_visibilidade()
         self.atualizar_seletores_intersecoes()
         self.gerar_grafico()
 
@@ -1275,13 +1501,17 @@ class ExploradorApp:
             f"  •  Intervalo [{inicio}, {fim}]"
         )
         self.cursor_precisao = CursorPrecisao(
-            self.canvas, funcoes, self.toolbar, self.status
+            self.canvas, funcoes, self.toolbar, self.status,
+            self.visibilidade_funcoes, self.visibilidade_elementos,
         )
         self.foco_pontos = FocoPontosNotaveis(
             self.canvas, funcoes, intersecoes, par, self.toolbar,
             self.cursor_precisao, self.status, raizes=raizes_por_funcao,
+            visibilidade_funcoes=self.visibilidade_funcoes,
+            visibilidade_elementos=self.visibilidade_elementos,
         )
         self.cursor_precisao.foco = self.foco_pontos
+        self.aplicar_visibilidade()
 
     def atualizar_navegacao(self):
         modo = getattr(self.toolbar.mode, "name", "NONE") if self.toolbar else "NONE"
