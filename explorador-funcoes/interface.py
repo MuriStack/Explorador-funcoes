@@ -17,6 +17,7 @@ from matematica import (
     vertice,
 )
 from intersecoes import encontrar_intersecoes, encontrar_raizes
+from integrais import avaliar_integrando, calcular_integral
 from tabela_valores import gerar_tabela
 from visualizacao import desenhar_funcoes
 
@@ -861,6 +862,7 @@ class FocoPontosNotaveis:
         self.visibilidade_elementos = visibilidade_elementos
         self.limites_iniciais = (self.eixo.get_xlim(), self.eixo.get_ylim())
         self.selecionado = None
+        self.area_integral = None
         self.pontos = []
         self.cores = {
             nome: linha.get_color()
@@ -915,6 +917,23 @@ class FocoPontosNotaveis:
             ),
             zorder=26, visible=False,
         )
+        self.resumo_area = self.eixo.text(
+            0.025, 0.97, "", transform=self.eixo.transAxes,
+            va="top", ha="left", color=TEXTO, fontsize=10,
+            bbox=dict(
+                boxstyle="round,pad=0.65", facecolor=CAMPO,
+                edgecolor="#2dd4bf", alpha=0.97,
+            ),
+            zorder=27, visible=False,
+        )
+        self.resumo_area.set_in_layout(False)
+        self.limites_area = [
+            self.eixo.axvline(
+                0, color="#2dd4bf", linestyle=":", linewidth=1.5,
+                zorder=8, visible=False, label="_nolegend_",
+            )
+            for _ in range(2)
+        ]
         self.conexao = self.canvas.mpl_connect("button_press_event", self.clicar)
 
     def registrar(self, descricao, x, y, cor, categoria, nome=None):
@@ -945,12 +964,80 @@ class FocoPontosNotaveis:
             f"Tangente de {nome}(x)", x, y, "#fb923c", "tangente", nome,
         )
 
+    def ocultar_analise_area(self):
+        self.resumo_area.set_visible(False)
+        for linha in self.limites_area:
+            linha.set_visible(False)
+
+    def remover_area_integral(self):
+        self.area_integral = None
+        self.ocultar_analise_area()
+        if self.selecionado is not None and self.selecionado[4] == "integral":
+            self.selecionado = None
+            self.cursor.ocultar(restaurar_status=True)
+
+    def definir_area_integral(self, nome, funcao, inicio, fim, integral, area, ys):
+        estava_selecionada = self.selecionado is not None and self.selecionado[4] == "integral"
+        self.remover_area_integral()
+        self.area_integral = (nome, funcao, inicio, fim, integral, area, min(0, *ys), max(0, *ys))
+        if estava_selecionada:
+            self.focar_area_integral()
+
+    def focar_area_integral(self):
+        nome, _, inicio, fim, integral, area, minimo, maximo = self.area_integral
+        ponto = (f"Área de {nome}(x)", (inicio + fim) / 2, 0, "#2dd4bf", "integral", nome)
+        if not self.ponto_visivel(ponto):
+            return
+        self.cursor.ocultar()
+        self.selecionado = ponto
+        self.marcador.set_visible(False)
+        self.etiqueta.set_visible(False)
+        margem_x = (fim - inicio) * 0.08
+        margem_y = (maximo - minimo) * 0.15
+        self.eixo.set_xlim(inicio - margem_x, fim + margem_x)
+        self.eixo.set_ylim(minimo - margem_y, maximo + margem_y)
+        for linha, limite in zip(self.limites_area, (inicio, fim)):
+            linha.set_xdata([limite, limite])
+            linha.set_visible(True)
+        self.resumo_area.set_text(
+            f"ÁREA DE {nome}(x)\n"
+            f"Intervalo: [{inicio:g}, {fim:g}]\n"
+            f"Integral definida ≈ {0.0 if round(integral, 6) == 0 else integral:.6f}\n"
+            f"Área total ≈ {area:.6f}\n"
+            "Verde: acima (+) · Laranja: abaixo (−)\n"
+            "Área total soma as duas regiões sem sinal."
+        )
+        self.resumo_area.set_visible(True)
+        self.status.set(
+            f"Área de {nome}(x)  •  Intervalo [{inicio:g}, {fim:g}]"
+            "  •  RESTAURAR VISÃO para voltar"
+        )
+        self.canvas.draw_idle()
+
+    def clicar_area_integral(self, evento):
+        if self.area_integral is None or evento.xdata is None or evento.ydata is None:
+            return
+        nome, funcao, inicio, fim = self.area_integral[:4]
+        ponto = ("", 0, 0, "", "integral", nome)
+        if not self.ponto_visivel(ponto):
+            return
+        x, y = evento.xdata, evento.ydata
+        if not math.isfinite(x) or not math.isfinite(y) or not inicio <= x <= fim:
+            return
+        try:
+            altura = avaliar_integrando(funcao, x)
+        except ValueError:
+            return
+        if altura != 0 and min(0, altura) <= y <= max(0, altura):
+            self.focar_area_integral()
+
     def atualizar_visibilidade(self):
         if self.selecionado is not None and not self.ponto_visivel(self.selecionado):
             self.selecionado = None
             self.marcador.set_visible(False)
             self.etiqueta.set_visible(False)
             self.cursor.ocultar(restaurar_status=True)
+            self.ocultar_analise_area()
 
     def clicar(self, evento):
         if (
@@ -992,8 +1079,10 @@ class FocoPontosNotaveis:
                 candidato = ponto
 
         if candidato is None:
+            self.clicar_area_integral(evento)
             return
 
+        self.ocultar_analise_area()
         descricao, x, y, cor = candidato[:4]
         self.cursor.ocultar()
         self.selecionado = candidato
@@ -1016,6 +1105,7 @@ class FocoPontosNotaveis:
         return abs(limites[1] - limites[0])
 
     def restaurar(self):
+        self.ocultar_analise_area()
         self.eixo.set_xlim(self.limites_iniciais[0])
         self.eixo.set_ylim(self.limites_iniciais[1])
         self.selecionado = None
@@ -1032,7 +1122,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.8")
+        self.janela.title("Explorador de Funções 3.9")
         self.janela.geometry("1360x840")
         self.janela.minsize(1050, 660)
         self.janela.configure(bg=FUNDO)
@@ -1057,13 +1147,16 @@ class ExploradorApp:
         self.funcao_tangente = tk.StringVar(value="f")
         self.tangente_ativa = False
         self.tangente_artistas = []
+        self.funcao_integral = tk.StringVar(value="f")
+        self.integral_ativa = False
+        self.integral_artistas = []
         self.funcoes_atuais = {}
         self.intervalo_atual = (-5, 5)
         self.visibilidade_elementos = {
             nome: tk.BooleanVar(value=True)
             for nome in (
                 "curvas", "raizes", "vertices", "extremos",
-                "intersecoes", "grade", "legenda", "tangente",
+                "intersecoes", "grade", "legenda", "tangente", "integral",
             )
         }
         self.visibilidade_funcoes = {
@@ -1279,6 +1372,8 @@ class ExploradorApp:
                 )
             elif categoria == "tangente":
                 mostrar = visiveis["tangente"].get() and funcoes[nome].get()
+            elif categoria == "integral":
+                mostrar = visiveis["integral"].get() and funcoes[nome].get()
             else:
                 continue
             artista.set_visible(mostrar)
@@ -1454,6 +1549,7 @@ class ExploradorApp:
             ("grade", "Grade"),
             ("legenda", "Legenda"),
             ("tangente", "Tangente"),
+            ("integral", "Área integral"),
         )
         self.criar_alternadores(
             grupo_visibilidade,
@@ -1507,6 +1603,45 @@ class ExploradorApp:
         )
         tk.Label(
             grupo_tangente, textvariable=self.tangente_resumo,
+            bg=PAINEL, fg=SUAVE, anchor="w", justify="left",
+            font=("DejaVu Sans", 9), wraplength=260,
+        ).pack(anchor="w", fill="x", pady=(3, 0))
+
+        grupo_integral = tk.Frame(self.pagina_analises, bg=PAINEL)
+        grupo_integral.pack(fill="x", pady=(17, 0))
+        self.texto(
+            grupo_integral, "INTEGRAL E ÁREA", 9, SUAVE, True,
+        ).pack(anchor="w", pady=(0, 6))
+        self.seletor_integral = SeletorArredondado(
+            grupo_integral, self.funcao_integral, ("f", "g"),
+            self.alterar_funcao_integral,
+        )
+        self.seletor_integral.pack(fill="x", pady=(0, 7))
+        limites_integral = tk.Frame(grupo_integral, bg=PAINEL)
+        limites_integral.pack(fill="x")
+        self.campos_integral = {}
+        for indice, (chave, titulo, valor) in enumerate((
+            ("inicio", "Início da área", "-1"),
+            ("fim", "Fim da área", "1"),
+        )):
+            coluna = tk.Frame(limites_integral, bg=PAINEL)
+            coluna.pack(
+                side="left", fill="x", expand=True,
+                padx=(0, 5) if indice == 0 else (5, 0),
+            )
+            self.texto(coluna, titulo, 9, SUAVE).pack(anchor="w", pady=(0, 4))
+            campo = CampoArredondado(coluna, valor)
+            campo.pack(fill="x")
+            campo.bind_enter(self.calcular_area)
+            self.campos_integral[chave] = campo
+        BotaoArredondado(
+            grupo_integral, "CALCULAR ÁREA", self.calcular_area, contorno=True,
+        ).pack(fill="x", pady=(9, 4))
+        self.integral_resumo = tk.StringVar(
+            value="Integral: área com sinal. Área total: soma das regiões sem sinal.",
+        )
+        tk.Label(
+            grupo_integral, textvariable=self.integral_resumo,
             bg=PAINEL, fg=SUAVE, anchor="w", justify="left",
             font=("DejaVu Sans", 9), wraplength=260,
         ).pack(anchor="w", fill="x", pady=(3, 0))
@@ -1673,6 +1808,9 @@ class ExploradorApp:
         seletor_tangente = getattr(self, "seletor_tangente", None)
         if seletor_tangente is not None:
             seletor_tangente.fechar_menu()
+        seletor_integral = getattr(self, "seletor_integral", None)
+        if seletor_integral is not None:
+            seletor_integral.fechar_menu()
 
     def atualizar_rolagem(self, inicio, fim):
         self.barra_rolagem.set(inicio, fim)
@@ -1720,6 +1858,11 @@ class ExploradorApp:
         self.atualizar_botoes_visibilidade()
         self.atualizar_seletores_intersecoes()
         self.seletor_tangente.atualizar_opcoes(tuple(self.nomes_ativos), True)
+        self.seletor_integral.atualizar_opcoes(tuple(self.nomes_ativos), True)
+        if self.funcao_integral.get() not in self.nomes_ativos:
+            self.funcao_integral.set(self.nomes_ativos[0])
+            self.integral_ativa = False
+            self.integral_resumo.set("Escolha a função e o intervalo da área.")
         if self.funcao_tangente.get() not in self.nomes_ativos:
             self.funcao_tangente.set(self.nomes_ativos[0])
             self.tangente_ativa = False
@@ -1958,6 +2101,7 @@ class ExploradorApp:
         self.funcoes_atuais = dict(funcoes)
         self.intervalo_atual = (inicio, fim)
         self.tangente_artistas = []
+        self.integral_artistas = []
         self.figura.set_tight_layout(True)
         self.canvas = FigureCanvasTkAgg(
             self.figura, master=self.area_grafico
@@ -1992,7 +2136,83 @@ class ExploradorApp:
             self.tracar_tangente(silencioso=True)
         else:
             self.aplicar_visibilidade()
+        if self.integral_ativa:
+            self.calcular_area(silencioso=True)
         self.atualizar_tabela_aberta()
+
+    def alterar_funcao_integral(self, _evento=None):
+        if self.integral_ativa:
+            self.calcular_area(silencioso=True)
+
+    def remover_area(self):
+        for artista in self.integral_artistas:
+            artista.remove()
+        self.integral_artistas.clear()
+        if self.foco_pontos is not None:
+            self.foco_pontos.remover_area_integral()
+
+    def calcular_area(self, silencioso=False):
+        if self.figura is None:
+            return
+        try:
+            nome = self.funcao_integral.get()
+            if nome not in self.funcoes_atuais:
+                raise ValueError("Selecione uma função ativa.")
+            try:
+                inicio, fim = (
+                    float(self.campos_integral[chave].get().strip().replace(",", "."))
+                    for chave in ("inicio", "fim")
+                )
+            except ValueError:
+                raise ValueError("Digite limites numéricos válidos para a área.") from None
+            if not all(math.isfinite(valor) for valor in (inicio, fim)) or inicio >= fim:
+                raise ValueError("Use limites finitos, com início menor que fim.")
+            if not self.intervalo_atual[0] <= inicio < fim <= self.intervalo_atual[1]:
+                raise ValueError("O intervalo da área deve estar dentro do intervalo do gráfico.")
+            funcao = self.funcoes_atuais[nome]
+            integral, area = calcular_integral(funcao, inicio, fim)
+            xs = [inicio + (fim - inicio) * indice / 800 for indice in range(801)]
+            ys = [avaliar_integrando(funcao, x) for x in xs]
+        except (ValueError, OverflowError, ZeroDivisionError) as erro:
+            self.remover_area()
+            self.integral_ativa = False
+            self.integral_resumo.set(f"Área indisponível: {erro}")
+            self.aplicar_visibilidade()
+            if not silencioso:
+                messagebox.showerror("Integral indisponível", str(erro), parent=self.janela)
+            return
+
+        self.remover_area()
+        eixo = self.figura.axes[0]
+        limites = eixo.get_xlim(), eixo.get_ylim()
+        for positivos, cor, titulo in (
+            (True, "#2dd4bf", "Área acima do eixo"),
+            (False, "#fb923c", "Área abaixo do eixo"),
+        ):
+            if not any(y > 0 if positivos else y < 0 for y in ys):
+                continue
+            regiao = eixo.fill_between(
+                xs, ys, 0, where=[y >= 0 if positivos else y <= 0 for y in ys],
+                interpolate=True, color=cor, alpha=0.28, zorder=1,
+                label=f"{titulo} de {nome}(x)",
+            )
+            regiao.set_gid(f"integral:{nome}")
+            self.integral_artistas.append(regiao)
+        eixo.set_xlim(limites[0])
+        eixo.set_ylim(limites[1])
+        self.integral_ativa = True
+        if self.foco_pontos is not None:
+            self.foco_pontos.definir_area_integral(nome, funcao, inicio, fim, integral, area, ys)
+        self.integral_resumo.set(
+            f"{nome}(x), intervalo [{inicio:g}, {fim:g}]\n"
+            f"Integral definida ≈ {0.0 if round(integral, 6) == 0 else integral:.6f}\n"
+            f"Área geométrica total ≈ {area:.6f}\n"
+            "Verde: acima (+). Laranja: abaixo (−).\n"
+            "Na área total, ambas as regiões são positivas.\n"
+            "Clique na região para ampliar e ver a análise."
+        )
+        self.aplicar_visibilidade()
+        self.status.set(f"Integral de {nome}(x) calculada no intervalo [{inicio:g}, {fim:g}]")
 
     def dados_tabela(self):
         try:

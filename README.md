@@ -10,7 +10,7 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 
 ![Interface do Explorador de Funções](images/interface.png)
 
-## Funcionalidades
+## Funcionalidades — versão 3.9
 
 - Visualização de até **cinco funções** simultaneamente.
 - Suporte a funções **afins, quadráticas e expressões matemáticas**.
@@ -23,6 +23,7 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 - Navegação interativa com zoom e movimentação.
 - **Interface dividida em Funções, Análises e Visual**, com painel recolhível e controles de visibilidade.
 - **Derivadas e retas tangentes** em pontos escolhidos da função.
+- **Integral definida e área geométrica total**, com regiões clicáveis para zoom e análise no gráfico.
 - Exportação de gráficos em **PNG**.
 
 ## Expressões matemáticas
@@ -65,6 +66,7 @@ Explorador-funcoes/
     ├── intersecoes.py
     ├── derivadas.py
     ├── extremos.py
+    ├── integrais.py
     ├── tabela_valores.py
     └── cursor_precisao.py
 ```
@@ -109,10 +111,9 @@ python explorador.py
 
 - A análise **algébrica** de raízes e vértices é limitada a polinômios de grau até dois.
 - Derivadas, raízes, interseções e extremos numéricos são aproximados e podem não ser identificados em todos os casos.
-- As buscas numéricas e a tabela usam o intervalo configurado; a tabela aceita até 1.001 linhas.
+- Integrais exigem intervalos contínuos com valores finitos; integrais impróprias não são suportadas.
+- As buscas e áreas usam o intervalo do gráfico; a tabela aceita até 1.001 linhas.
 
 ## Autor
 
 Desenvolvido por [MuriStack](https://github.com/MuriStack).
-
-Projeto educacional que integra programação, matemática e visualização gráfica.
