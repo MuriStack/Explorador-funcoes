@@ -4,7 +4,7 @@ Aplicação em **Python** para analisar, comparar e exportar gráficos matemáti
 
 ## Sobre o projeto
 
-O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adiciona um **cursor de precisão** para identificar pontos das curvas com seis casas decimais, sem alterar os recursos anteriores.
+O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adicionou um **cursor de precisão** para identificar pontos das curvas com seis casas decimais. A versão **2.8** permite clicar em raízes, vértices e interseções para aproximar o gráfico do ponto selecionado, com a possibilidade de restaurar a visualização.
 
 ## Demonstração
 
@@ -14,6 +14,8 @@ O Explorador de Funções permite visualizar **uma a cinco funções simultânea
 
 - Visualização de **1 a 5 funções** no mesmo plano cartesiano, usando **+ ADICIONAR** e **− REMOVER**.
 - Modos **Afim**, **Quadrática** e **Expressão** para cada função, independentemente.
+- **Zoom inteligente:** clique diretamente em uma raiz, vértice ou interseção visível para centralizar e ampliar a visualização, mostrando suas coordenadas com seis casas decimais.
+- **Restaurar visão:** botão com bordas arredondadas e contorno discreto, que retorna aos limites originais do gráfico após usar o zoom inteligente ou a navegação manual.
 - **Cursor de precisão:** ao aproximar o mouse de uma curva, o programa destaca o ponto e mostra as coordenadas `x` e `y` com seis casas decimais.
 - Exibição das coordenadas livres do mouse na barra inferior quando ele está no gráfico, mas longe das curvas.
 - O cursor ignora resultados indefinidos e não interfere nas ferramentas de zoom e movimentação.
@@ -31,6 +33,15 @@ O Explorador de Funções permite visualizar **uma a cinco funções simultânea
 4. Ao afastar o cursor, a marcação desaparece. Fora das curvas, a barra inferior mostra a posição do mouse.
 
 Os valores exibidos são calculados a partir da função na posição horizontal do cursor, e não apenas lidos dos pontos usados para desenhar a curva. Para funções com singularidades ou pontos fora do domínio real, não há indicação de ponto nessas posições.
+
+## Como usar o zoom inteligente
+
+1. Gere um gráfico com uma ou mais funções.
+2. Clique diretamente em um ponto notável desenhado (raiz, vértice ou interseção entre `f(x)` e `g(x)`).
+3. O gráfico será centralizado e ampliado em torno do ponto, com `x` e `y` exibidos com seis casas decimais.
+4. Clique novamente no ponto selecionado para ampliar mais, ou clique em **RESTAURAR VISÃO** para retornar aos limites originais.
+
+O clique funciona apenas perto dos pontos matematicamente calculados e atualmente visíveis, sem ativar as ferramentas de zoom ou movimentação do Matplotlib. As interseções automáticas continuam limitadas a `f(x)` e `g(x)` polinomiais de grau até 2, e as raízes e os vértices continuam sendo destacados apenas nos polinômios de grau até 2. A ampliação não aumenta a precisão numérica dos cálculos, apenas melhora a inspeção visual do ponto.
 
 ## Tecnologias utilizadas
 
@@ -113,7 +124,7 @@ Use `*` para multiplicar, como em `2*x`. Tanto `^` quanto `**` representam potê
 
 - **`matematica.py`** — cálculos de raízes, discriminante, vértice e interseções.
 - **`visualizacao.py`** — desenho simultâneo de até cinco curvas e seus pontos notáveis.
-- **`interface.py`** — controles, apresentação dos resultados e exportação.
+- **`interface.py`** — controles, cursor de precisão, zoom inteligente e exportação.
 - **`expressoes.py`** — avaliação controlada das expressões matemáticas.
 - **`cursor_precisao.py`** — cálculo e apresentação das coordenadas durante o movimento do mouse.
 - **`explorador.py`** — versão de terminal.
@@ -126,7 +137,7 @@ Use `*` para multiplicar, como em `2*x`. Tanto `^` quanto `**` representam potê
 
 ## Próximos passos
 
-- Permitir clicar em raízes, vértices e interseções para centralizar e aproximar o gráfico automaticamente.
+- Ampliar a análise numérica de funções não polinomiais e as interseções entre outros pares de curvas.
 
 ## Autor
 

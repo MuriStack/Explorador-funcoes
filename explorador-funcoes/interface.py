@@ -12,6 +12,7 @@ from matematica import (
     descrever_comportamento,
     descrever_raizes_polinomio,
     discriminante,
+    raizes_reais,
     vertice,
 )
 from visualizacao import desenhar_funcoes
@@ -333,6 +334,10 @@ class CursorPrecisao:
         self.ocultar(restaurar_status=True)
 
     def movimentar(self, evento):
+        if getattr(self, "foco", None) is not None and self.foco.selecionado is not None:
+            self.ocultar()
+            return
+
         if self.toolbar is not None and self.toolbar.mode:
             self.ocultar(restaurar_status=True)
             return
@@ -391,10 +396,125 @@ class CursorPrecisao:
         self.canvas.draw_idle()
 
 
+class FocoPontosNotaveis:
+    def __init__(self, canvas, funcoes, intersecoes, toolbar, cursor, status):
+        self.canvas = canvas
+        self.eixo = canvas.figure.axes[0]
+        self.toolbar = toolbar
+        self.cursor = cursor
+        self.status = status
+        self.limites_iniciais = (self.eixo.get_xlim(), self.eixo.get_ylim())
+        self.selecionado = None
+        self.pontos = []
+        self.cores = {
+            nome: linha.get_color()
+            for (nome, _), linha in zip(funcoes, self.eixo.lines)
+        }
+
+        if intersecoes is not None and intersecoes[0] == "pontos":
+            for x, y in intersecoes[1]:
+                self.registrar("Interseção f/g", x, y, "#4ade80")
+
+        for nome, funcao in funcoes:
+            polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
+            if polinomio is None:
+                continue
+            cor = self.cores[nome]
+            ponto_vertice = vertice(polinomio)
+            if ponto_vertice is not None:
+                self.registrar(f"Vértice de {nome}(x)", *ponto_vertice, cor)
+            for raiz in raizes_reais(polinomio):
+                self.registrar(f"Raiz de {nome}(x)", raiz, 0.0, cor)
+
+        self.marcador, = self.eixo.plot(
+            [], [], marker="o", markersize=12, linestyle="None",
+            markeredgecolor="#ffffff", markeredgewidth=2,
+            color="#4ade80", zorder=25, visible=False,
+            label="_nolegend_",
+        )
+        self.etiqueta = self.eixo.annotate(
+            "", xy=(0, 0), xytext=(18, 18),
+            textcoords="offset points", fontsize=10, color=TEXTO,
+            bbox=dict(
+                boxstyle="round,pad=0.6", facecolor=CAMPO,
+                edgecolor="#4ade80", alpha=0.97,
+            ),
+            zorder=26, visible=False,
+        )
+        self.conexao = self.canvas.mpl_connect("button_press_event", self.clicar)
+
+    def registrar(self, descricao, x, y, cor):
+        if not math.isfinite(x) or not math.isfinite(y):
+            return
+        limite_x = self.eixo.get_xlim()
+        if min(limite_x) <= x <= max(limite_x):
+            self.pontos.append((descricao, x, y, cor))
+
+    def clicar(self, evento):
+        if (
+            evento.button != 1
+            or evento.inaxes is not self.eixo
+            or (self.toolbar is not None and self.toolbar.mode)
+            or evento.x is None
+            or evento.y is None
+        ):
+            return
+
+        candidato = None
+        menor_distancia = 16.0
+        for descricao, x, y, cor in self.pontos:
+            px, py = self.eixo.transData.transform((x, y))
+            if not math.isfinite(px) or not math.isfinite(py):
+                continue
+            if not self.eixo.bbox.contains(px, py):
+                continue
+            distancia = math.hypot(evento.x - px, evento.y - py)
+            if distancia < menor_distancia:
+                menor_distancia = distancia
+                candidato = (descricao, x, y, cor)
+
+        if candidato is None:
+            return
+
+        descricao, x, y, cor = candidato
+        self.cursor.ocultar()
+        self.selecionado = candidato
+        self.eixo.set_xlim(x - self.amplitude(self.eixo.get_xlim()) / 14,
+                           x + self.amplitude(self.eixo.get_xlim()) / 14)
+        self.eixo.set_ylim(y - self.amplitude(self.eixo.get_ylim()) / 14,
+                           y + self.amplitude(self.eixo.get_ylim()) / 14)
+        self.marcador.set_data([x], [y])
+        self.marcador.set_markerfacecolor(cor)
+        self.marcador.set_visible(True)
+        self.etiqueta.xy = (x, y)
+        self.etiqueta.set_text(f"{descricao}\nx = {x:.6f}\ny = {y:.6f}")
+        self.etiqueta.get_bbox_patch().set_edgecolor(cor)
+        self.etiqueta.set_visible(True)
+        self.status.set(f"{descricao}  •  x = {x:.6f}  •  y = {y:.6f}")
+        self.canvas.draw_idle()
+
+    @staticmethod
+    def amplitude(limites):
+        return abs(limites[1] - limites[0])
+
+    def restaurar(self):
+        self.eixo.set_xlim(self.limites_iniciais[0])
+        self.eixo.set_ylim(self.limites_iniciais[1])
+        self.selecionado = None
+        self.marcador.set_visible(False)
+        self.etiqueta.set_visible(False)
+        self.cursor.ocultar()
+        self.status.set(self.cursor.status_base)
+        self.canvas.draw_idle()
+
+    def desconectar(self):
+        self.canvas.mpl_disconnect(self.conexao)
+
+
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.7")
+        self.janela.title("Explorador de Funções 2.8")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -403,6 +523,7 @@ class ExploradorApp:
         self.canvas = None
         self.toolbar = None
         self.cursor_precisao = None
+        self.foco_pontos = None
         self.campos = {}
         self.quantidade_funcoes = 2
         self.tipos = {nome: "Afim" for nome in "fghij"}
@@ -611,9 +732,24 @@ class ExploradorApp:
         painel_grafico = CartaoArredondado(corpo, raio=24, margem=17)
         painel_grafico.pack(side="right", fill="both", expand=True)
         direita = painel_grafico.conteudo
+        cabecalho_grafico = tk.Frame(direita, bg=PAINEL)
+        cabecalho_grafico.pack(fill="x", pady=(2, 4))
         self.texto(
-            direita, "VISUALIZAÇÃO CARTESIANA", 11, SUAVE, True
-        ).pack(anchor="w", pady=(2, 10))
+            cabecalho_grafico, "VISUALIZAÇÃO CARTESIANA", 11, SUAVE, True
+        ).pack(side="left")
+        self.botao_restaurar = BotaoArredondado(
+            cabecalho_grafico, "RESTAURAR VISÃO",
+            self.restaurar_visualizacao, contorno=True,
+        )
+        self.botao_restaurar.configure(width=176, height=36)
+        self.botao_restaurar.itemconfigure(
+            self.botao_restaurar.fundo, outline="#64748b", width=2,
+        )
+        self.botao_restaurar.pack(side="right")
+        self.texto(
+            direita, "Clique em uma raiz, vértice ou interseção para aproximar.",
+            9, SUAVE,
+        ).pack(anchor="w", pady=(0, 9))
         self.area_grafico = tk.Frame(direita, bg=PAINEL)
         self.area_grafico.pack(fill="both", expand=True)
 
@@ -823,6 +959,9 @@ class ExploradorApp:
             )
         self.resultado.set("\n\n".join(descricoes))
 
+        if self.foco_pontos is not None:
+            self.foco_pontos.desconectar()
+            self.foco_pontos = None
         if self.cursor_precisao is not None:
             self.cursor_precisao.desconectar()
             self.cursor_precisao = None
@@ -854,6 +993,15 @@ class ExploradorApp:
         self.cursor_precisao = CursorPrecisao(
             self.canvas, funcoes, self.toolbar, self.status
         )
+        self.foco_pontos = FocoPontosNotaveis(
+            self.canvas, funcoes, intersecoes, self.toolbar,
+            self.cursor_precisao, self.status,
+        )
+        self.cursor_precisao.foco = self.foco_pontos
+
+    def restaurar_visualizacao(self):
+        if self.foco_pontos is not None:
+            self.foco_pontos.restaurar()
 
     def salvar_grafico(self):
         if self.figura is None:
