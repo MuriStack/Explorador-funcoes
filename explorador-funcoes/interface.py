@@ -5,6 +5,7 @@ from tkinter import filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
+from derivadas import calcular_tangente
 from expressoes import Expressao
 from matematica import (
     criar_polinomio,
@@ -262,7 +263,11 @@ class SeletorArredondado(tk.Canvas):
         self.configure(cursor="hand2" if habilitado else "arrow")
         self.redesenhar()
 
+    def fechar_menu(self):
+        self.menu.unpost()
+
     def selecionar(self, valor):
+        self.fechar_menu()
         if not self.habilitado or valor not in self.opcoes:
             return
         if self.variavel.get() == valor:
@@ -274,6 +279,7 @@ class SeletorArredondado(tk.Canvas):
         if not self.habilitado:
             return "break"
         self.focus_set()
+        self.fechar_menu()
         self.menu.delete(0, "end")
         for nome in self.opcoes:
             self.menu.add_command(
@@ -318,6 +324,7 @@ class SeletorArredondado(tk.Canvas):
 
     def destroy(self):
         self.variavel.trace_remove("write", self.rastro)
+        self.fechar_menu()
         self.menu.destroy()
         super().destroy()
 
@@ -722,7 +729,7 @@ class FocoPontosNotaveis:
     def registrar(self, descricao, x, y, cor, categoria, nome=None):
         if not math.isfinite(x) or not math.isfinite(y):
             return
-        limite_x = self.eixo.get_xlim()
+        limite_x = self.limites_iniciais[0]
         if min(limite_x) <= x <= max(limite_x):
             self.pontos.append((descricao, x, y, cor, categoria, nome))
 
@@ -733,6 +740,19 @@ class FocoPontosNotaveis:
         if categoria == "intersecoes":
             return all(self.visibilidade_funcoes[n].get() for n in self.par)
         return nome is None or self.visibilidade_funcoes[nome].get()
+
+    def remover_ponto_tangente(self):
+        self.pontos = [ponto for ponto in self.pontos if ponto[4] != "tangente"]
+        if self.selecionado is not None and self.selecionado[4] == "tangente":
+            self.selecionado = None
+            self.marcador.set_visible(False)
+            self.etiqueta.set_visible(False)
+
+    def definir_ponto_tangente(self, nome, x, y):
+        self.remover_ponto_tangente()
+        self.registrar(
+            f"Tangente de {nome}(x)", x, y, "#fb923c", "tangente", nome,
+        )
 
     def atualizar_visibilidade(self):
         if self.selecionado is not None and not self.ponto_visivel(self.selecionado):
@@ -763,7 +783,14 @@ class FocoPontosNotaveis:
             if not self.eixo.bbox.contains(px, py):
                 continue
             distancia = math.hypot(evento.x - px, evento.y - py)
-            if distancia < menor_distancia:
+            if (
+                distancia < menor_distancia - 1e-6
+                or (
+                    candidato is not None
+                    and abs(distancia - menor_distancia) <= 1e-6
+                    and ponto[4] == "tangente"
+                )
+            ):
                 menor_distancia = distancia
                 candidato = ponto
 
@@ -808,7 +835,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.3")
+        self.janela.title("Explorador de Funções 3.4")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -823,9 +850,14 @@ class ExploradorApp:
         self.quantidade_funcoes = 2
         self.primeira_intersecao = tk.StringVar(value="f")
         self.segunda_intersecao = tk.StringVar(value="g")
+        self.funcao_tangente = tk.StringVar(value="f")
+        self.tangente_ativa = False
+        self.tangente_artistas = []
+        self.funcoes_atuais = {}
+        self.intervalo_atual = (-5, 5)
         self.visibilidade_elementos = {
             nome: tk.BooleanVar(value=True)
-            for nome in ("curvas", "raizes", "vertices", "intersecoes", "grade", "legenda")
+            for nome in ("curvas", "raizes", "vertices", "intersecoes", "grade", "legenda", "tangente")
         }
         self.visibilidade_funcoes = {
             nome: tk.BooleanVar(value=True) for nome in "fghij"
@@ -971,6 +1003,8 @@ class ExploradorApp:
                     visiveis["intersecoes"].get()
                     and all(funcoes[n].get() for n in par)
                 )
+            elif categoria == "tangente":
+                mostrar = visiveis["tangente"].get() and funcoes[nome].get()
             else:
                 continue
             artista.set_visible(mostrar)
@@ -1030,7 +1064,7 @@ class ExploradorApp:
         )
         barra_rolagem.pack(side="right", fill="y")
         rolagem.pack(side="left", fill="both", expand=True)
-        rolagem.configure(yscrollcommand=barra_rolagem.set)
+        rolagem.configure(yscrollcommand=self.atualizar_rolagem)
         self.rolagem = rolagem
         self.barra_rolagem = barra_rolagem
         interno = tk.Frame(rolagem, bg=PAINEL)
@@ -1115,6 +1149,7 @@ class ExploradorApp:
             ("intersecoes", "Interseções"),
             ("grade", "Grade"),
             ("legenda", "Legenda"),
+            ("tangente", "Tangente"),
         )
         self.criar_alternadores(
             grupo_visibilidade,
@@ -1128,6 +1163,40 @@ class ExploradorApp:
             ((nome, f"{nome}(x)", self.visibilidade_funcoes[nome]) for nome in "fghij"),
         )
         self.atualizar_botoes_visibilidade()
+
+        grupo_tangente = tk.Frame(interno, bg=PAINEL)
+        grupo_tangente.pack(fill="x", pady=(15, 0))
+        self.texto(
+            grupo_tangente, "DERIVADA E RETA TANGENTE", 9, SUAVE, True,
+        ).pack(anchor="w", pady=(0, 6))
+        linha_tangente = tk.Frame(grupo_tangente, bg=PAINEL)
+        linha_tangente.pack(fill="x")
+        coluna_funcao = tk.Frame(linha_tangente, bg=PAINEL)
+        coluna_funcao.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.texto(coluna_funcao, "Função", 9, SUAVE).pack(anchor="w", pady=(0, 4))
+        self.seletor_tangente = SeletorArredondado(
+            coluna_funcao, self.funcao_tangente, ("f", "g"),
+            lambda _evento: None,
+        )
+        self.seletor_tangente.pack(fill="x")
+        coluna_x = tk.Frame(linha_tangente, bg=PAINEL)
+        coluna_x.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        self.texto(coluna_x, "Posição x", 9, SUAVE).pack(anchor="w", pady=(0, 4))
+        self.campo_tangente_x = CampoArredondado(coluna_x, "2")
+        self.campo_tangente_x.pack(fill="x")
+        self.campo_tangente_x.bind_enter(self.tracar_tangente)
+        BotaoArredondado(
+            grupo_tangente, "TRAÇAR TANGENTE", self.tracar_tangente,
+            contorno=True,
+        ).pack(fill="x", pady=(9, 4))
+        self.tangente_resumo = tk.StringVar(
+            value="Escolha a função e o valor de x."
+        )
+        tk.Label(
+            grupo_tangente, textvariable=self.tangente_resumo,
+            bg=PAINEL, fg=SUAVE, anchor="w", justify="left",
+            font=("DejaVu Sans", 9), wraplength=260,
+        ).pack(anchor="w", fill="x", pady=(3, 0))
 
         self.grupos_funcoes = {}
         for nome, valores in (
@@ -1238,7 +1307,19 @@ class ExploradorApp:
         if self.canvas is not None:
             self.canvas.draw_idle()
 
+    def fechar_menus(self):
+        for seletor in getattr(self, "seletores_intersecoes", ()):
+            seletor.fechar_menu()
+        seletor_tangente = getattr(self, "seletor_tangente", None)
+        if seletor_tangente is not None:
+            seletor_tangente.fechar_menu()
+
+    def atualizar_rolagem(self, inicio, fim):
+        self.barra_rolagem.set(inicio, fim)
+        self.fechar_menus()
+
     def rolar_painel(self, direcao):
+        self.fechar_menus()
         self.rolagem.yview_scroll(direcao, "units")
         return "break"
 
@@ -1278,6 +1359,11 @@ class ExploradorApp:
         self.indicador_funcoes.configure(text=f"{quantidade} de 5 funções")
         self.atualizar_botoes_visibilidade()
         self.atualizar_seletores_intersecoes()
+        self.seletor_tangente.atualizar_opcoes(tuple(self.nomes_ativos), True)
+        if self.funcao_tangente.get() not in self.nomes_ativos:
+            self.funcao_tangente.set(self.nomes_ativos[0])
+            self.tangente_ativa = False
+            self.tangente_resumo.set("Escolha a função e o valor de x.")
         self.gerar_grafico()
 
     def atualizar_seletores_intersecoes(self):
@@ -1482,6 +1568,9 @@ class ExploradorApp:
             plt.close(self.figura)
 
         self.figura = nova_figura
+        self.funcoes_atuais = dict(funcoes)
+        self.intervalo_atual = (inicio, fim)
+        self.tangente_artistas = []
         self.figura.set_tight_layout(True)
         self.canvas = FigureCanvasTkAgg(
             self.figura, master=self.area_grafico
@@ -1511,7 +1600,75 @@ class ExploradorApp:
             visibilidade_elementos=self.visibilidade_elementos,
         )
         self.cursor_precisao.foco = self.foco_pontos
+        if self.tangente_ativa:
+            self.tracar_tangente(silencioso=True)
+        else:
+            self.aplicar_visibilidade()
+
+    def remover_tangente(self):
+        for artista in self.tangente_artistas:
+            artista.remove()
+        self.tangente_artistas.clear()
+        if self.foco_pontos is not None:
+            self.foco_pontos.remover_ponto_tangente()
+
+    def tracar_tangente(self, silencioso=False):
+        if self.figura is None:
+            return
+        try:
+            nome = self.funcao_tangente.get()
+            if nome not in self.funcoes_atuais:
+                raise ValueError("Selecione uma função ativa.")
+            try:
+                x = float(self.campo_tangente_x.get().strip().replace(",", "."))
+            except ValueError:
+                raise ValueError("Digite um número válido para x.") from None
+            if not math.isfinite(x):
+                raise ValueError("Digite um valor finito para x.")
+            if not self.intervalo_atual[0] <= x <= self.intervalo_atual[1]:
+                raise ValueError("O valor de x deve estar dentro do intervalo do gráfico.")
+            y, inclinacao = calcular_tangente(self.funcoes_atuais[nome], x)
+        except (ValueError, OverflowError, ZeroDivisionError) as erro:
+            if silencioso:
+                self.remover_tangente()
+                self.tangente_ativa = False
+                self.tangente_resumo.set(f"Tangente indisponível: {erro}")
+                self.aplicar_visibilidade()
+            else:
+                self.remover_tangente()
+                self.tangente_ativa = False
+                self.tangente_resumo.set("Tangente indisponível no ponto escolhido.")
+                self.aplicar_visibilidade()
+                messagebox.showerror("Derivada indisponível", str(erro))
+            return
+
+        self.remover_tangente()
+        eixo = self.figura.axes[0]
+        cor = "#fb923c"
+        linha = eixo.axline(
+            (x, y), slope=inclinacao, color=cor,
+            linestyle="--", linewidth=2.0,
+            label=f"Tangente de {nome}(x)", zorder=10,
+        )
+        ponto = eixo.scatter(
+            [x], [y], color=cor, edgecolors="#ffffff", linewidths=1.2,
+            s=95, zorder=11, label="_nolegend_",
+        )
+        for artista in (linha, ponto):
+            artista.set_gid(f"tangente:{nome}")
+        self.tangente_artistas = [linha, ponto]
+        if self.foco_pontos is not None:
+            self.foco_pontos.definir_ponto_tangente(nome, x, y)
+        self.tangente_ativa = True
+        self.tangente_resumo.set(
+            f"{nome}'({x:.4f}) = {inclinacao:.6f}\n"
+            f"Ponto: ({x:.6f}, {y:.6f})"
+        )
         self.aplicar_visibilidade()
+        self.status.set(
+            f"Tangente de {nome}(x) em x = {x:.4f} "
+            f"• inclinação = {inclinacao:.6f}"
+        )
 
     def atualizar_navegacao(self):
         modo = getattr(self.toolbar.mode, "name", "NONE") if self.toolbar else "NONE"

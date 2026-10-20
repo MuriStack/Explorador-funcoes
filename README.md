@@ -22,7 +22,7 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 - Zoom inteligente em pontos notáveis, incluindo raízes numéricas.
 - Navegação interativa com zoom e movimentação.
 - Painel recolhível e **controle de visibilidade** de curvas individuais, raízes, vértices, interseções, grade e legenda.
-- Interface escura com controles personalizados.
+- **Derivadas e retas tangentes** em pontos escolhidos da função.
 - Exportação de gráficos em **PNG**.
 
 ## Expressões matemáticas
@@ -64,6 +64,7 @@ Explorador-funcoes/
     ├── visualizacao.py
     ├── expressoes.py
     ├── intersecoes.py
+    ├── derivadas.py
     └── cursor_precisao.py
 ```
 
@@ -106,11 +107,10 @@ python explorador.py
 ## Limitações
 
 - A análise **algébrica** de raízes e vértices é limitada a polinômios de grau até dois.
-- Raízes e interseções numéricas são aproximações e podem não identificar todos os pontos.
+- Derivadas de expressões, raízes e interseções numéricas são aproximadas e podem não ser determinadas em alguns pontos.
 - As buscas numéricas consideram o intervalo configurado.
 
 ## Autor
-
 Desenvolvido por [MuriStack](https://github.com/MuriStack).
 
 ---
