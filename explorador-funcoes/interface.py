@@ -8,8 +8,15 @@ from matplotlib.backends.backend_tkagg import (
     NavigationToolbar2Tk,
 )
 
-from matematica import calcular_intersecao, classificar_funcao, descrever_raiz
-from visualizacao import exibir_grafico
+from matematica import (
+    calcular_intersecoes_polinomios,
+    criar_polinomio,
+    descrever_comportamento,
+    descrever_raizes_polinomio,
+    discriminante,
+    vertice,
+)
+from visualizacao import desenhar_funcoes
 
 
 FUNDO = "#080f1e"
@@ -75,7 +82,7 @@ class CampoArredondado(tk.Canvas):
     def __init__(self, parent, valor):
         super().__init__(
             parent, bg=PAINEL, highlightthickness=0,
-            bd=0, height=40, width=110,
+            bd=0, height=39, width=105,
         )
         self.borda = self.create_polygon(
             0, 0, 1, 0, 1, 1, 0, 1,
@@ -84,7 +91,7 @@ class CampoArredondado(tk.Canvas):
         self.entrada = tk.Entry(
             self, bg=CAMPO, fg=TEXTO, insertbackground=TEXTO,
             relief="flat", highlightthickness=0, bd=0,
-            font=("DejaVu Sans", 11),
+            font=("DejaVu Sans", 10),
         )
         self.entrada.insert(0, valor)
         self.area_entrada = self.create_window(
@@ -124,7 +131,7 @@ class CampoArredondado(tk.Canvas):
 class BotaoArredondado(tk.Canvas):
     def __init__(self, parent, texto, comando):
         super().__init__(
-            parent, bg=PAINEL, height=48,
+            parent, bg=PAINEL, height=46,
             highlightthickness=0, bd=0,
             cursor="hand2", takefocus=True,
         )
@@ -134,7 +141,7 @@ class BotaoArredondado(tk.Canvas):
             fill=DESTAQUE, outline="",
         )
         self.rotulo = self.create_text(
-            10, 24, text=texto, fill=FUNDO,
+            10, 23, text=texto, fill=FUNDO,
             font=("DejaVu Sans", 11, "bold"), anchor="center",
         )
         self.bind("<Configure>", self.ajustar)
@@ -143,8 +150,6 @@ class BotaoArredondado(tk.Canvas):
         self.bind("<Button-1>", lambda _evento: self.comando())
         self.bind("<Return>", lambda _evento: self.comando())
         self.bind("<space>", lambda _evento: self.comando())
-        self.bind("<FocusIn>", lambda _evento: self.itemconfigure(self.fundo, outline=TEXTO, width=2))
-        self.bind("<FocusOut>", lambda _evento: self.itemconfigure(self.fundo, outline="", width=0))
 
     def ajustar(self, evento):
         self.coords(
@@ -155,19 +160,18 @@ class BotaoArredondado(tk.Canvas):
 
 
 class BotaoModo(tk.Canvas):
-    def __init__(self, parent, texto, comando):
+    def __init__(self, parent, texto, comando, altura=36):
         super().__init__(
-            parent, bg=PAINEL, height=40, width=120,
+            parent, bg=PAINEL, height=altura, width=110,
             highlightthickness=0, bd=0, cursor="hand2", takefocus=True,
         )
         self.comando = comando
-        self.selecionado = False
         self.fundo = self.create_polygon(
             0, 0, 1, 0, 1, 1, 0, 1, fill=CAMPO, outline="",
         )
         self.rotulo = self.create_text(
-            10, 20, text=texto, fill=SUAVE,
-            font=("DejaVu Sans", 10, "bold"), anchor="center",
+            10, altura / 2, text=texto, fill=SUAVE,
+            font=("DejaVu Sans", 9, "bold"), anchor="center",
         )
         self.bind("<Configure>", self.ajustar)
         self.bind("<Button-1>", lambda _evento: self.comando())
@@ -177,12 +181,11 @@ class BotaoModo(tk.Canvas):
     def ajustar(self, evento):
         self.coords(
             self.fundo,
-            *pontos_arredondados(1, 1, evento.width - 1, evento.height - 1, 12),
+            *pontos_arredondados(1, 1, evento.width - 1, evento.height - 1, 11),
         )
         self.coords(self.rotulo, evento.width / 2, evento.height / 2)
 
     def definir_selecionado(self, selecionado):
-        self.selecionado = selecionado
         self.itemconfigure(self.fundo, fill=DESTAQUE if selecionado else CAMPO)
         self.itemconfigure(self.rotulo, fill=FUNDO if selecionado else SUAVE)
 
@@ -190,9 +193,9 @@ class BotaoModo(tk.Canvas):
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.2")
-        self.janela.geometry("1280x800")
-        self.janela.minsize(990, 660)
+        self.janela.title("Explorador de Funções 2.3")
+        self.janela.geometry("1300x820")
+        self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
 
         self.figura = None
@@ -200,6 +203,10 @@ class ExploradorApp:
         self.toolbar = None
         self.campos = {}
         self.modo = "duas"
+        self.tipos = {"f": "Afim", "g": "Afim"}
+        self.botoes_tipo = {}
+        self.rotulos = {}
+        self.campos_c = {}
 
         self.criar_interface()
         self.gerar_grafico()
@@ -212,88 +219,147 @@ class ExploradorApp:
             anchor="w", justify="left",
         )
 
-    def criar_grupo(self, parent, titulo, campos):
-        grupo = tk.Frame(parent, bg=PAINEL)
-        self.texto(grupo, titulo, 9, SUAVE, True).pack(anchor="w", pady=(8, 3))
-        linha = tk.Frame(grupo, bg=PAINEL)
-        linha.pack(fill="x")
-        linha.columnconfigure(0, weight=1, uniform="campos")
-        linha.columnconfigure(1, weight=1, uniform="campos")
-        for indice, (chave, rotulo, valor) in enumerate(campos):
+    def criar_par_de_campos(self, parent, definicoes):
+        linha = tk.Frame(parent, bg=PAINEL)
+        linha.pack(fill="x", pady=(5, 0))
+        linha.columnconfigure(0, weight=1, uniform="parametros")
+        linha.columnconfigure(1, weight=1, uniform="parametros")
+        for indice, (chave, rotulo, valor) in enumerate(definicoes):
             coluna = tk.Frame(linha, bg=PAINEL)
             coluna.grid(
                 row=0, column=indice, sticky="ew",
                 padx=(0, 5) if indice == 0 else (5, 0),
             )
-            self.texto(coluna, rotulo, 9, SUAVE).pack(anchor="w", pady=(0, 3))
+            rotulo_widget = self.texto(coluna, rotulo, 9, SUAVE)
+            rotulo_widget.pack(anchor="w", pady=(0, 3))
             entrada = CampoArredondado(coluna, valor)
             entrada.pack(fill="x")
             entrada.bind_enter(self.gerar_grafico)
             self.campos[chave] = entrada
+            self.rotulos[chave] = rotulo_widget
+        return linha
+
+    def criar_grupo_funcao(self, parent, nome, valores):
+        grupo = tk.Frame(parent, bg=PAINEL)
+        self.texto(grupo, f"FUNÇÃO {nome}(x)", 9, SUAVE, True).pack(
+            anchor="w", pady=(11, 5)
+        )
+
+        selecao = tk.Frame(grupo, bg=PAINEL)
+        selecao.pack(fill="x")
+        selecao_tipo = {}
+        for tipo in ("Afim", "Quadrática"):
+            botao = BotaoModo(
+                selecao, tipo, lambda n=nome, t=tipo: self.alterar_tipo(n, t)
+            )
+            botao.pack(
+                side="left", fill="x", expand=True,
+                padx=(0, 5) if tipo == "Afim" else (5, 0),
+            )
+            selecao_tipo[tipo] = botao
+        self.botoes_tipo[nome] = selecao_tipo
+        selecao_tipo["Afim"].definir_selecionado(True)
+
+        a, b, c = valores
+        self.criar_par_de_campos(
+            grupo,
+            ((f"a{nome}", "a · angular", a),
+             (f"b{nome}", "b · linear", b)),
+        )
+        linha_c = tk.Frame(grupo, bg=PAINEL)
+        rotulo_c = self.texto(linha_c, "c · constante", 9, SUAVE)
+        rotulo_c.pack(anchor="w", pady=(3, 3))
+        entrada_c = CampoArredondado(linha_c, c)
+        entrada_c.pack(fill="x")
+        entrada_c.bind_enter(self.gerar_grafico)
+        self.campos[f"c{nome}"] = entrada_c
+        self.campos_c[nome] = linha_c
         grupo.pack(fill="x")
         return grupo
 
     def criar_interface(self):
-        topo = tk.Frame(self.janela, bg=FUNDO, padx=28, pady=23)
+        topo = tk.Frame(self.janela, bg=FUNDO, padx=28, pady=20)
         topo.pack(fill="x")
         self.texto(topo, "EXPLORADOR DE FUNÇÕES", 20, TEXTO, True).pack(anchor="w")
         self.texto(
-            topo, "Laboratório interativo de funções afins", 10, SUAVE
-        ).pack(anchor="w", pady=(6, 0))
+            topo, "Laboratório interativo de funções afins e quadráticas", 10, SUAVE
+        ).pack(anchor="w", pady=(5, 0))
 
-        corpo = tk.Frame(self.janela, bg=FUNDO, padx=24, pady=6)
+        corpo = tk.Frame(self.janela, bg=FUNDO, padx=24, pady=5)
         corpo.pack(fill="both", expand=True)
 
-        barra = CartaoArredondado(corpo, largura=310, raio=24, margem=21)
+        barra = CartaoArredondado(corpo, largura=335, raio=24, margem=17)
         barra.pack(side="left", fill="y", padx=(0, 16))
         lateral = barra.conteudo
 
-        self.texto(lateral, "PARÂMETROS", 12, DESTAQUE, True).pack(
+        rolagem = tk.Canvas(lateral, bg=PAINEL, highlightthickness=0, bd=0)
+        rolagem.pack(side="left", fill="both", expand=True)
+        barra_rolagem = tk.Scrollbar(
+            lateral, orient="vertical", command=rolagem.yview,
+            bg=CAMPO, troughcolor=PAINEL,
+        )
+        barra_rolagem.pack(side="right", fill="y")
+        rolagem.configure(yscrollcommand=barra_rolagem.set)
+        interno = tk.Frame(rolagem, bg=PAINEL)
+        janela_interna = rolagem.create_window((0, 0), window=interno, anchor="nw")
+        interno.bind(
+            "<Configure>",
+            lambda _evento: rolagem.configure(scrollregion=rolagem.bbox("all")),
+        )
+        rolagem.bind(
+            "<Configure>",
+            lambda evento: rolagem.itemconfigure(janela_interna, width=evento.width),
+        )
+        rolagem.bind("<Button-4>", lambda _evento: rolagem.yview_scroll(-3, "units"))
+        rolagem.bind("<Button-5>", lambda _evento: rolagem.yview_scroll(3, "units"))
+        rolagem.bind("<MouseWheel>", lambda evento: rolagem.yview_scroll(
+            -1 if evento.delta > 0 else 1, "units"
+        ))
+
+        self.texto(interno, "PARÂMETROS", 12, DESTAQUE, True).pack(
             anchor="w", pady=(0, 7)
         )
-        self.texto(lateral, "QUANTAS FUNÇÕES?", 9, SUAVE, True).pack(
+        self.texto(interno, "QUANTAS FUNÇÕES?", 9, SUAVE, True).pack(
             anchor="w", pady=(3, 5)
         )
-        selecao = tk.Frame(lateral, bg=PAINEL)
-        selecao.pack(fill="x", pady=(0, 5))
+        selecao_modo = tk.Frame(interno, bg=PAINEL)
+        selecao_modo.pack(fill="x")
         self.botao_uma = BotaoModo(
-            selecao, "1 função", lambda: self.alterar_modo("uma")
+            selecao_modo, "1 função", lambda: self.alterar_modo("uma")
         )
         self.botao_uma.pack(side="left", fill="x", expand=True, padx=(0, 5))
         self.botao_duas = BotaoModo(
-            selecao, "2 funções", lambda: self.alterar_modo("duas")
+            selecao_modo, "2 funções", lambda: self.alterar_modo("duas")
         )
         self.botao_duas.pack(side="left", fill="x", expand=True, padx=(5, 0))
         self.botao_duas.definir_selecionado(True)
 
-        self.grupo_f = self.criar_grupo(
-            lateral, "FUNÇÃO f(x)",
-            (("af", "a · angular", "2"), ("bf", "b · linear", "1")),
+        self.grupo_f = self.criar_grupo_funcao(interno, "f", ("2", "1", "0"))
+        self.grupo_g = self.criar_grupo_funcao(interno, "g", ("-1", "4", "0"))
+
+        self.grupo_intervalo = tk.Frame(interno, bg=PAINEL)
+        self.texto(self.grupo_intervalo, "INTERVALO", 9, SUAVE, True).pack(
+            anchor="w", pady=(11, 0)
         )
-        self.grupo_g = self.criar_grupo(
-            lateral, "FUNÇÃO g(x)",
-            (("ag", "a · angular", "-1"), ("bg", "b · linear", "4")),
-        )
-        self.grupo_intervalo = self.criar_grupo(
-            lateral, "INTERVALO",
+        self.criar_par_de_campos(
+            self.grupo_intervalo,
             (("inicio", "Início", "-5"), ("fim", "Fim", "5")),
         )
+        self.grupo_intervalo.pack(fill="x")
 
         BotaoArredondado(
-            lateral, "GERAR GRÁFICO  ↗", self.gerar_grafico
-        ).pack(fill="x", pady=(13, 10))
-
-        tk.Frame(lateral, bg=BORDA, height=1).pack(fill="x")
+            interno, "GERAR GRÁFICO  ↗", self.gerar_grafico
+        ).pack(fill="x", pady=(14, 10))
+        tk.Frame(interno, bg=BORDA, height=1).pack(fill="x")
         self.texto(
-            lateral, "ANÁLISE MATEMÁTICA", 11, DESTAQUE, True
-        ).pack(anchor="w", pady=(10, 7))
-
+            interno, "ANÁLISE MATEMÁTICA", 11, DESTAQUE, True
+        ).pack(anchor="w", pady=(12, 8))
         self.resultado = tk.StringVar(value="")
         tk.Label(
-            lateral, textvariable=self.resultado, bg=PAINEL, fg=TEXTO,
-            anchor="nw", justify="left", font=("DejaVu Sans", 10),
-            wraplength=255,
-        ).pack(anchor="w", fill="x")
+            interno, textvariable=self.resultado,
+            bg=PAINEL, fg=TEXTO, anchor="nw", justify="left",
+            font=("DejaVu Sans", 10), wraplength=275,
+        ).pack(anchor="w", fill="x", pady=(0, 15))
 
         painel_grafico = CartaoArredondado(corpo, raio=24, margem=17)
         painel_grafico.pack(side="right", fill="both", expand=True)
@@ -301,7 +367,6 @@ class ExploradorApp:
         self.texto(
             direita, "VISUALIZAÇÃO CARTESIANA", 11, SUAVE, True
         ).pack(anchor="w", pady=(2, 10))
-
         self.area_grafico = tk.Frame(direita, bg=PAINEL)
         self.area_grafico.pack(fill="both", expand=True)
 
@@ -309,7 +374,7 @@ class ExploradorApp:
         tk.Label(
             self.janela, textvariable=self.status, bg=FUNDO,
             fg=SUAVE, anchor="w", font=("DejaVu Sans", 9),
-            padx=28, pady=12,
+            padx=28, pady=11,
         ).pack(fill="x")
 
     def alterar_modo(self, modo):
@@ -324,19 +389,69 @@ class ExploradorApp:
             self.grupo_g.pack(fill="x", before=self.grupo_intervalo)
         self.gerar_grafico()
 
-    def ler_coeficiente(self, chave):
+    def alterar_tipo(self, nome, tipo):
+        if self.tipos[nome] == tipo:
+            return
+        self.tipos[nome] = tipo
+        for nome_tipo, botao in self.botoes_tipo[nome].items():
+            botao.definir_selecionado(nome_tipo == tipo)
+        if tipo == "Quadrática":
+            self.campos_c[nome].pack(fill="x", pady=(4, 0))
+            self.rotulos[f"a{nome}"].configure(text="a · x²")
+            self.rotulos[f"b{nome}"].configure(text="b · x")
+        else:
+            self.campos_c[nome].pack_forget()
+            self.rotulos[f"a{nome}"].configure(text="a · angular")
+            self.rotulos[f"b{nome}"].configure(text="b · linear")
+        if nome == "f" or self.modo == "duas":
+            self.gerar_grafico()
+
+    def ler_numero(self, chave):
         valor = float(self.campos[chave].get().strip().replace(",", "."))
         if not math.isfinite(valor):
             raise ValueError("Use apenas números finitos.")
         return valor
 
+    def obter_polinomio(self, nome):
+        a = self.ler_numero(f"a{nome}")
+        b = self.ler_numero(f"b{nome}")
+        c = self.ler_numero(f"c{nome}") if self.tipos[nome] == "Quadrática" else 0
+        return criar_polinomio(self.tipos[nome], a, b, c)
+
+    @staticmethod
+    def formatar_numero(valor):
+        if abs(valor) < 0.0000001:
+            valor = 0.0
+        return f"{valor:.4f}".rstrip("0").rstrip(".")
+
+    def descrever_polinomio(self, nome, polinomio):
+        a, b, c = polinomio
+        numero = self.formatar_numero
+        if a == 0:
+            formula = f"{nome}(x) = {numero(b)}x {('+' if c >= 0 else '-')} {numero(abs(c))}"
+        else:
+            formula = (
+                f"{nome}(x) = {numero(a)}x² "
+                f"{('+' if b >= 0 else '-')} {numero(abs(b))}x "
+                f"{('+' if c >= 0 else '-')} {numero(abs(c))}"
+            )
+
+        linhas = [formula, descrever_comportamento(polinomio)]
+        delta = discriminante(polinomio)
+        if delta is not None:
+            linhas.append(f"Δ = {numero(delta)}")
+        linhas.append(f"Raízes: {descrever_raizes_polinomio(polinomio)}")
+        ponto = vertice(polinomio)
+        if ponto is not None:
+            vx, vy = ponto
+            linhas.append(f"Vértice: ({numero(vx)}, {numero(vy)})")
+        return "\n".join(linhas)
+
     def gerar_grafico(self):
         try:
-            af = self.ler_coeficiente("af")
-            bf = self.ler_coeficiente("bf")
-            exibir_g = self.modo == "duas"
-            ag = self.ler_coeficiente("ag") if exibir_g else None
-            bg = self.ler_coeficiente("bg") if exibir_g else None
+            funcoes = [("f", self.obter_polinomio("f"))]
+            if self.modo == "duas":
+                funcoes.append(("g", self.obter_polinomio("g")))
 
             inicio = int(self.campos["inicio"].get())
             fim = int(self.campos["fim"].get())
@@ -345,45 +460,50 @@ class ExploradorApp:
             if fim - inicio > 1000:
                 raise ValueError("O intervalo deve ter até 1000 unidades.")
 
-            situacao, intersecao = (
-                calcular_intersecao(af, bf, ag, bg)
-                if exibir_g else (None, None)
-            )
-            if intersecao is not None and not all(
-                math.isfinite(v) for v in intersecao
-            ):
-                raise ValueError("Os resultados excederam o limite numérico.")
+            for _, polinomio in funcoes:
+                valores = [discriminante(polinomio)]
+                valores.extend(vertice(polinomio) or ())
+                for valor in valores:
+                    if valor is not None and not math.isfinite(valor):
+                        raise ValueError("Os coeficientes geraram números muito grandes.")
 
-            nova_figura = exibir_grafico(
-                af, bf, ag, bg, inicio, fim, intersecao,
-                mostrar=False, tema_escuro=True, exibir_g=exibir_g,
+            intersecoes = None
+            if len(funcoes) == 2:
+                intersecoes = calcular_intersecoes_polinomios(
+                    funcoes[0][1], funcoes[1][1]
+                )
+                if not all(
+                    math.isfinite(valor)
+                    for ponto in intersecoes[1] for valor in ponto
+                ):
+                    raise ValueError("A interseção gerou números muito grandes.")
+
+            nova_figura = desenhar_funcoes(
+                funcoes, inicio, fim, mostrar=False, tema_escuro=True
             )
-        except (ValueError, OverflowError) as erro:
+
+        except (ValueError, OverflowError, ZeroDivisionError) as erro:
             messagebox.showerror("Entrada inválida", str(erro))
             return
 
-        descricao_f = (
-            f"f(x) = {af:g}x + ({bf:g})\n"
-            f"{classificar_funcao(af).capitalize()}\n"
-            f"Raiz: {descrever_raiz(af, bf)}"
-        )
-        if exibir_g:
+        descricoes = [
+            self.descrever_polinomio(nome, polinomio)
+            for nome, polinomio in funcoes
+        ]
+        if intersecoes is not None:
+            situacao, pontos = intersecoes
             if situacao == "coincidentes":
-                descricao = "Retas coincidentes"
-            elif situacao == "paralelas":
-                descricao = "Retas paralelas"
+                texto_intersecao = "Curvas coincidentes"
+            elif situacao == "sem_intersecao":
+                texto_intersecao = "Sem interseção real"
             else:
-                x, y = intersecao
-                descricao = f"({x:.2f}, {y:.2f})"
-                if not inicio <= x <= fim:
-                    descricao += "\n(fora do intervalo)"
-            descricao_f += (
-                f"\n\ng(x) = {ag:g}x + ({bg:g})\n"
-                f"{classificar_funcao(ag).capitalize()}\n"
-                f"Raiz: {descrever_raiz(ag, bg)}\n\n"
-                f"Interseção: {descricao}"
-            )
-        self.resultado.set(descricao_f)
+                texto_intersecao = "\n".join(
+                    f"({self.formatar_numero(x)}, {self.formatar_numero(y)})"
+                    + (" · fora do intervalo" if not inicio <= x <= fim else "")
+                    for x, y in pontos
+                )
+            descricoes.append(f"INTERSEÇÕES\n{texto_intersecao}")
+        self.resultado.set("\n\n".join(descricoes))
 
         if self.toolbar is not None:
             self.toolbar.destroy()
@@ -398,16 +518,17 @@ class ExploradorApp:
         )
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
-
         self.toolbar = NavigationToolbar2Tk(
             self.canvas, self.area_grafico, pack_toolbar=False
         )
         self.toolbar.update()
         self.toolbar.pack(side="bottom", fill="x")
 
-        nome_modo = "1 função" if not exibir_g else "2 funções"
+        numero_funcoes = len(funcoes)
         self.status.set(
-            f"Gráfico atualizado  •  {nome_modo}  •  Intervalo [{inicio}, {fim}]"
+            f"Gráfico atualizado  •  "
+            f"{'2 funções' if numero_funcoes == 2 else '1 função'}"
+            f"  •  Intervalo [{inicio}, {fim}]"
         )
 
 
