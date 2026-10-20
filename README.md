@@ -21,7 +21,7 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 - Cursor de precisão com **seis casas decimais**.
 - Zoom inteligente em pontos notáveis, incluindo raízes numéricas.
 - Navegação interativa com zoom e movimentação.
-- Painel recolhível e **controle de visibilidade** de curvas individuais, raízes, vértices, interseções, grade e legenda.
+- **Interface dividida em Funções, Análises e Visual**, com painel recolhível e controles de visibilidade.
 - **Derivadas e retas tangentes** em pontos escolhidos da função.
 - Exportação de gráficos em **PNG**.
 

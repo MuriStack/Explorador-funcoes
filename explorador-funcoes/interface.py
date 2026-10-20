@@ -908,9 +908,9 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.5")
-        self.janela.geometry("1300x820")
-        self.janela.minsize(1000, 670)
+        self.janela.title("Explorador de Funções 3.6")
+        self.janela.geometry("1360x840")
+        self.janela.minsize(1050, 660)
         self.janela.configure(bg=FUNDO)
 
         self.figura = None
@@ -923,6 +923,7 @@ class ExploradorApp:
         self.sliders = {}
         self.atualizacao_pendente = None
         self.atualizacao_tangente_pendente = None
+        self.aba_ativa = "funcoes"
         self.quantidade_funcoes = 2
         self.primeira_intersecao = tk.StringVar(value="f")
         self.segunda_intersecao = tk.StringVar(value="g")
@@ -1026,6 +1027,19 @@ class ExploradorApp:
         except ValueError:
             return
         self.gerar_grafico(silencioso=True)
+
+    def mostrar_aba(self, nome):
+        if nome == self.aba_ativa and self.paginas[nome].winfo_manager():
+            return
+        self.fechar_menus()
+        for chave, pagina in self.paginas.items():
+            if chave == nome:
+                pagina.pack(fill="both", expand=True)
+            else:
+                pagina.pack_forget()
+            self.botoes_abas[chave].definir_selecionado(chave == nome)
+        self.aba_ativa = nome
+        self.rolagem.yview_moveto(0)
 
     def criar_grupo_funcao(self, parent, nome, valores):
         grupo = tk.Frame(parent, bg=PAINEL)
@@ -1173,10 +1187,24 @@ class ExploradorApp:
         corpo.pack(fill="both", expand=True)
 
         self.painel_parametros = CartaoArredondado(
-            corpo, largura=335, raio=24, margem=17,
+            corpo, largura=374, raio=24, margem=17,
         )
         self.painel_parametros.pack(side="left", fill="y", padx=(0, 9))
         lateral = self.painel_parametros.conteudo
+        cabecalho_abas = tk.Frame(lateral, bg=PAINEL)
+        cabecalho_abas.pack(fill="x", pady=(0, 12))
+        self.botoes_abas = {}
+        for chave, titulo in (
+            ("funcoes", "FUNÇÕES"),
+            ("analises", "ANÁLISES"),
+            ("visual", "VISUAL"),
+        ):
+            botao = BotaoModo(
+                cabecalho_abas, titulo,
+                lambda aba=chave: self.mostrar_aba(aba), altura=39,
+            )
+            botao.pack(side="left", fill="x", expand=True, padx=2)
+            self.botoes_abas[chave] = botao
 
         self.faixa_alternancia = tk.Frame(corpo, bg=FUNDO, width=34)
         self.faixa_alternancia.pack(side="left", fill="y", padx=(0, 10))
@@ -1205,14 +1233,23 @@ class ExploradorApp:
             "<Configure>",
             lambda evento: rolagem.itemconfigure(janela_interna, width=evento.width),
         )
+        self.paginas = {
+            chave: tk.Frame(interno, bg=PAINEL)
+            for chave in ("funcoes", "analises", "visual")
+        }
+        self.pagina_funcoes = self.paginas["funcoes"]
+        self.pagina_analises = self.paginas["analises"]
+        self.pagina_visual = self.paginas["visual"]
+        self.paginas["funcoes"].pack(fill="both", expand=True)
+        self.botoes_abas["funcoes"].definir_selecionado(True)
 
-        self.texto(interno, "PARÂMETROS", 12, DESTAQUE, True).pack(
+        self.texto(self.pagina_funcoes, "PARÂMETROS", 12, DESTAQUE, True).pack(
             anchor="w", pady=(0, 7)
         )
-        self.texto(interno, "QUANTAS FUNÇÕES?", 9, SUAVE, True).pack(
+        self.texto(self.pagina_funcoes, "QUANTAS FUNÇÕES?", 9, SUAVE, True).pack(
             anchor="w", pady=(3, 5)
         )
-        selecao_modo = tk.Frame(interno, bg=PAINEL)
+        selecao_modo = tk.Frame(self.pagina_funcoes, bg=PAINEL)
         selecao_modo.pack(fill="x")
         self.botao_uma = BotaoModo(
             selecao_modo, "1 função", lambda: self.alterar_modo("uma")
@@ -1224,7 +1261,7 @@ class ExploradorApp:
         self.botao_duas.pack(side="left", fill="x", expand=True, padx=(5, 0))
         self.botao_duas.definir_selecionado(True)
 
-        controles = tk.Frame(interno, bg=PAINEL)
+        controles = tk.Frame(self.pagina_funcoes, bg=PAINEL)
         controles.pack(fill="x", pady=(8, 3))
         botao_adicionar = BotaoArredondado(
             controles, "+ ADICIONAR", self.adicionar_funcao, contorno=True
@@ -1236,10 +1273,13 @@ class ExploradorApp:
         )
         botao_remover.configure(width=125)
         botao_remover.pack(side="left", fill="x", expand=True, padx=(4, 0))
-        self.indicador_funcoes = self.texto(interno, "2 de 5 funções", 9, SUAVE)
+        self.indicador_funcoes = self.texto(self.pagina_funcoes, "2 de 5 funções", 9, SUAVE)
         self.indicador_funcoes.pack(anchor="w", pady=(2, 0))
 
-        self.grupo_selecao_intersecoes = tk.Frame(interno, bg=PAINEL)
+        self.texto(self.pagina_analises, "ANÁLISES", 12, DESTAQUE, True).pack(
+            anchor="w", pady=(0, 9)
+        )
+        self.grupo_selecao_intersecoes = tk.Frame(self.pagina_analises, bg=PAINEL)
         self.grupo_selecao_intersecoes.pack(fill="x", pady=(13, 0))
         self.texto(
             self.grupo_selecao_intersecoes, "INTERSEÇÕES ENTRE FUNÇÕES",
@@ -1265,7 +1305,10 @@ class ExploradorApp:
             seletor.pack(fill="x")
             self.seletores_intersecoes.append(seletor)
 
-        grupo_visibilidade = tk.Frame(interno, bg=PAINEL)
+        self.texto(self.pagina_visual, "PERSONALIZAR GRÁFICO", 12, DESTAQUE, True).pack(
+            anchor="w", pady=(0, 9)
+        )
+        grupo_visibilidade = tk.Frame(self.pagina_visual, bg=PAINEL)
         grupo_visibilidade.pack(fill="x", pady=(15, 0))
         self.texto(
             grupo_visibilidade, "ELEMENTOS VISÍVEIS", 9, SUAVE, True,
@@ -1292,7 +1335,7 @@ class ExploradorApp:
         )
         self.atualizar_botoes_visibilidade()
 
-        grupo_tangente = tk.Frame(interno, bg=PAINEL)
+        grupo_tangente = tk.Frame(self.pagina_analises, bg=PAINEL)
         grupo_tangente.pack(fill="x", pady=(15, 0))
         self.texto(
             grupo_tangente, "DERIVADA E RETA TANGENTE", 9, SUAVE, True,
@@ -1343,12 +1386,12 @@ class ExploradorApp:
             ("i", ("-2", "1", "0")),
             ("j", ("0", "3", "0")),
         ):
-            grupo = self.criar_grupo_funcao(interno, nome, valores)
+            grupo = self.criar_grupo_funcao(self.pagina_funcoes, nome, valores)
             self.grupos_funcoes[nome] = grupo
             if nome in "hij":
                 grupo.pack_forget()
 
-        self.grupo_intervalo = tk.Frame(interno, bg=PAINEL)
+        self.grupo_intervalo = tk.Frame(self.pagina_funcoes, bg=PAINEL)
         self.texto(self.grupo_intervalo, "INTERVALO", 9, SUAVE, True).pack(
             anchor="w", pady=(11, 0)
         )
@@ -1359,19 +1402,19 @@ class ExploradorApp:
         self.grupo_intervalo.pack(fill="x")
 
         BotaoArredondado(
-            interno, "GERAR GRÁFICO  ↗", self.gerar_grafico
+            self.pagina_funcoes, "GERAR GRÁFICO  ↗", self.gerar_grafico
         ).pack(fill="x", pady=(14, 6))
         BotaoArredondado(
-            interno, "SALVAR GRÁFICO  ↓", self.salvar_grafico, contorno=True
+            self.pagina_visual, "SALVAR GRÁFICO  ↓", self.salvar_grafico, contorno=True
         ).pack(fill="x", pady=(0, 12))
 
-        tk.Frame(interno, bg=BORDA, height=1).pack(fill="x")
+        tk.Frame(self.pagina_analises, bg=BORDA, height=1).pack(fill="x")
         self.texto(
-            interno, "ANÁLISE MATEMÁTICA", 11, DESTAQUE, True
+            self.pagina_analises, "ANÁLISE MATEMÁTICA", 11, DESTAQUE, True
         ).pack(anchor="w", pady=(12, 8))
         self.resultado = tk.StringVar(value="")
         tk.Label(
-            interno, textvariable=self.resultado,
+            self.pagina_analises, textvariable=self.resultado,
             bg=PAINEL, fg=TEXTO, anchor="nw", justify="left",
             font=("DejaVu Sans", 10), wraplength=275,
         ).pack(anchor="w", fill="x", pady=(0, 15))
