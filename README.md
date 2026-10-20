@@ -1,12 +1,10 @@
 # 📈 Explorador de Funções
 
-Aplicação desenvolvida em **Python** para explorar, comparar e visualizar funções afins por meio de gráficos interativos.
+Aplicação em **Python** para explorar e comparar funções afins em uma interface gráfica interativa.
 
 ## Sobre o projeto
 
-O Explorador de Funções é uma aplicação que permite analisar duas funções afins simultaneamente, identificando suas características matemáticas e representando seus gráficos no plano cartesiano.
-
-A versão 2.0 introduz uma **interface gráfica desenvolvida com Tkinter**, permitindo que o usuário configure funções e visualize os resultados sem depender da entrada de dados pelo terminal.
+O Explorador de Funções permite definir duas funções afins, identificar raízes, classificações e interseções e visualizar os resultados no plano cartesiano. A versão **2.1 — Dark Edition** apresenta uma interface escura com **painéis, campos e botão de cantos arredondados**, gráficos personalizados e um painel integrado de análise matemática.
 
 ## Demonstração
 
@@ -14,23 +12,21 @@ A versão 2.0 introduz uma **interface gráfica desenvolvida com Tkinter**, perm
 
 ## Funcionalidades
 
-- Interface gráfica para inserir os coeficientes das funções.
-- Visualização simultânea de duas funções afins.
-- Identificação de funções crescentes, decrescentes e constantes.
-- Cálculo e identificação das raízes.
-- Identificação de pontos de interseção.
-- Verificação de funções paralelas e coincidentes.
-- Configuração do intervalo de visualização.
-- Zoom e movimentação pelo gráfico.
-- Atualização do gráfico sem reiniciar o programa.
-- Tratamento de entradas inválidas.
+- Interface gráfica escura, com painéis e campos arredondados e coeficientes de `f(x)` e `g(x)` organizados em pares.
+- Gráfico interativo com zoom e movimentação.
+- Classificação de funções crescentes, decrescentes ou constantes.
+- Cálculo e identificação de raízes e interseção.
+- Identificação de funções paralelas e coincidentes.
+- Configuração do intervalo e atualização do gráfico sem reiniciar.
+- Validação de valores informados.
+- Versão alternativa executada pelo terminal.
 
 ## Tecnologias utilizadas
 
-- **Python** — linguagem principal do projeto.
-- **Tkinter** — construção da interface gráfica.
-- **Matplotlib** — geração e interação com os gráficos.
-- **Git e GitHub** — versionamento do código.
+- **Python** — lógica e organização do programa.
+- **Tkinter** — interface gráfica.
+- **Matplotlib** — gráficos e ferramentas interativas.
+- **Git e GitHub** — controle de versões.
 
 ## Estrutura do projeto
 
@@ -56,33 +52,28 @@ git clone https://github.com/MuriStack/Explorador-funcoes.git
 cd Explorador-funcoes
 ```
 
-### 2. Crie um ambiente virtual
+### 2. Prepare o ambiente Python
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### 3. Instale as dependências
-
-```bash
 pip install matplotlib
 ```
 
-O Tkinter também deve estar disponível no sistema. No Ubuntu e derivados:
+No Ubuntu e derivados, se o Tkinter não estiver instalado:
 
 ```bash
 sudo apt install python3-tk
 ```
 
-### 4. Execute a aplicação
+### 3. Abra a interface
 
 ```bash
 cd explorador-funcoes
 python interface.py
 ```
 
-A versão tradicional, baseada no terminal, também continua disponível:
+Para usar a versão de terminal:
 
 ```bash
 python explorador.py
@@ -90,27 +81,15 @@ python explorador.py
 
 ## Organização do código
 
-O projeto possui uma estrutura modular:
-
-- **`matematica.py`** — funções responsáveis pelos cálculos matemáticos.
-- **`visualizacao.py`** — construção e personalização dos gráficos.
-- **`interface.py`** — interface gráfica e interação com o usuário.
-- **`explorador.py`** — versão original executada pelo terminal.
-
-## Conceitos aplicados
-
-- Funções afins e suas propriedades.
-- Coeficientes angular e linear.
-- Raízes e pontos de interseção.
-- Modularização em Python.
-- Programação orientada a objetos.
-- Interfaces gráficas.
-- Visualização interativa de dados.
+- **`matematica.py`** — cálculos e classificações.
+- **`visualizacao.py`** — montagem dos gráficos e estilos.
+- **`interface.py`** — janela, controles e interação com o usuário.
+- **`explorador.py`** — aplicação no terminal.
 
 ## Próximos passos
 
-- Modernizar a aparência da interface.
-- Melhorar a personalização dos gráficos.
+- Permitir salvar gráficos como imagens.
+- Melhorar a edição e o gerenciamento de funções.
 - Expandir o suporte para outros tipos de funções.
 
 ## Autor

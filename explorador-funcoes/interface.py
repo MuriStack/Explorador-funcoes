@@ -1,5 +1,6 @@
+import math
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import (
@@ -7,200 +8,372 @@ from matplotlib.backends.backend_tkagg import (
     NavigationToolbar2Tk,
 )
 
-from matematica import (
-    calcular_intersecao,
-    classificar_funcao,
-    descrever_raiz,
-)
+from matematica import calcular_intersecao, classificar_funcao, descrever_raiz
 from visualizacao import exibir_grafico
+
+
+FUNDO = "#080f1e"
+PAINEL = "#111c2e"
+CAMPO = "#1c2a40"
+TEXTO = "#eff6ff"
+SUAVE = "#9fb0c9"
+DESTAQUE = "#38bdf8"
+BORDA = "#293b54"
+VERDE = "#4ade80"
+
+
+def pontos_arredondados(x1, y1, x2, y2, raio):
+
+    raio = max(0, min(raio, (x2 - x1) / 2, (y2 - y1) / 2))
+    pontos = []
+    for centro_x, centro_y, angulo_inicial in (
+        (x2 - raio, y1 + raio, -90),
+        (x2 - raio, y2 - raio, 0),
+        (x1 + raio, y2 - raio, 90),
+        (x1 + raio, y1 + raio, 180),
+    ):
+        for passo in range(9):
+            angulo = math.radians(angulo_inicial + passo * 90 / 8)
+            pontos.extend((
+                centro_x + raio * math.cos(angulo),
+                centro_y + raio * math.sin(angulo),
+            ))
+    return pontos
+
+
+class CartaoArredondado(tk.Canvas):
+
+    def __init__(self, parent, largura=None, raio=22, margem=18):
+        super().__init__(
+            parent,
+            bg=FUNDO,
+            highlightthickness=0,
+            bd=0,
+            width=largura or 500,
+        )
+        self.raio = raio
+        self.margem = margem
+        self.borda = self.create_polygon(
+            0, 0, 1, 0, 1, 1, 0, 1,
+            fill=PAINEL, outline=BORDA, width=1,
+        )
+        self.conteudo = tk.Frame(self, bg=PAINEL)
+        self.janela_interna = self.create_window(
+            margem, margem, anchor="nw", window=self.conteudo,
+        )
+        self.bind("<Configure>", self.ajustar)
+
+    def ajustar(self, evento):
+        largura = max(1, evento.width)
+        altura = max(1, evento.height)
+        self.coords(
+            self.borda,
+            *pontos_arredondados(1, 1, largura - 1, altura - 1, self.raio),
+        )
+        self.itemconfigure(
+            self.janela_interna,
+            width=max(1, largura - 2 * self.margem),
+            height=max(1, altura - 2 * self.margem),
+        )
+
+
+class CampoArredondado(tk.Canvas):
+
+    def __init__(self, parent, valor):
+        super().__init__(
+            parent,
+            bg=PAINEL,
+            highlightthickness=0,
+            bd=0,
+            height=40,
+            width=110,
+        )
+        self.borda = self.create_polygon(
+            0, 0, 1, 0, 1, 1, 0, 1,
+            fill=CAMPO, outline=BORDA, width=1,
+        )
+        self.entrada = tk.Entry(
+            self,
+            bg=CAMPO,
+            fg=TEXTO,
+            insertbackground=TEXTO,
+            relief="flat",
+            highlightthickness=0,
+            bd=0,
+            font=("DejaVu Sans", 11),
+        )
+        self.entrada.insert(0, valor)
+        self.area_entrada = self.create_window(
+            13, 9, window=self.entrada, anchor="nw",
+        )
+        self.bind("<Configure>", self.ajustar)
+        self.entrada.bind("<FocusIn>", self.focar)
+        self.entrada.bind("<FocusOut>", self.desfocar)
+        self.bind("<Button-1>", lambda _evento: self.entrada.focus_set())
+
+    def ajustar(self, evento):
+        largura = max(1, evento.width)
+        altura = max(1, evento.height)
+        self.coords(
+            self.borda,
+            *pontos_arredondados(1, 1, largura - 1, altura - 1, 12),
+        )
+        self.itemconfigure(
+            self.area_entrada,
+            width=max(1, largura - 26),
+            height=max(1, altura - 18),
+        )
+
+    def focar(self, _evento):
+        self.itemconfigure(self.borda, outline=DESTAQUE, width=2)
+
+    def desfocar(self, _evento):
+        self.itemconfigure(self.borda, outline=BORDA, width=1)
+
+    def get(self):
+        return self.entrada.get()
+
+    def bind_enter(self, comando):
+        self.entrada.bind("<Return>", lambda _evento: comando())
+
+
+class BotaoArredondado(tk.Canvas):
+    def __init__(self, parent, texto, comando):
+        super().__init__(
+            parent,
+            bg=PAINEL,
+            height=48,
+            highlightthickness=0,
+            bd=0,
+            cursor="hand2",
+            takefocus=True,
+        )
+        self.comando = comando
+        self.fundo = self.create_polygon(
+            0, 0, 1, 0, 1, 1, 0, 1,
+            fill=DESTAQUE, outline="",
+        )
+        self.rotulo = self.create_text(
+            10, 24,
+            text=texto,
+            fill=FUNDO,
+            font=("DejaVu Sans", 11, "bold"),
+            anchor="center",
+        )
+        self.bind("<Configure>", self.ajustar)
+        self.bind("<Enter>", lambda _evento: self.itemconfigure(self.fundo, fill="#7dd3fc"))
+        self.bind("<Leave>", lambda _evento: self.itemconfigure(self.fundo, fill=DESTAQUE))
+        self.bind("<Button-1>", lambda _evento: self.comando())
+        self.bind("<Return>", lambda _evento: self.comando())
+        self.bind("<space>", lambda _evento: self.comando())
+        self.bind("<FocusIn>", lambda _evento: self.itemconfigure(self.fundo, outline=TEXTO, width=2))
+        self.bind("<FocusOut>", lambda _evento: self.itemconfigure(self.fundo, outline="", width=0))
+
+    def ajustar(self, evento):
+        self.coords(
+            self.fundo,
+            *pontos_arredondados(1, 1, evento.width - 1, evento.height - 1, 14),
+        )
+        self.coords(self.rotulo, evento.width / 2, evento.height / 2)
 
 
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.0")
-        self.janela.geometry("1200x750")
-        self.janela.minsize(850, 550)
+        self.janela.title("Explorador de Funções 2.1")
+        self.janela.geometry("1280x800")
+        self.janela.minsize(990, 660)
+        self.janela.configure(bg=FUNDO)
 
+        self.figura = None
         self.canvas = None
         self.toolbar = None
-        self.figura = None
+        self.campos = {}
 
         self.criar_interface()
         self.gerar_grafico()
 
+    @staticmethod
+    def texto(parent, conteudo, tamanho=11, cor=TEXTO, negrito=False):
+        return tk.Label(
+            parent,
+            text=conteudo,
+            bg=parent["bg"],
+            fg=cor,
+            font=("DejaVu Sans", tamanho, "bold" if negrito else "normal"),
+            anchor="w",
+            justify="left",
+        )
+
     def criar_interface(self):
-        estilo = ttk.Style()
-        estilo.theme_use("clam")
+        topo = tk.Frame(self.janela, bg=FUNDO, padx=28, pady=23)
+        topo.pack(fill="x")
+        self.texto(
+            topo, "EXPLORADOR DE FUNÇÕES", 20, TEXTO, True
+        ).pack(anchor="w")
+        self.texto(
+            topo, "Laboratório interativo de funções afins", 10, SUAVE
+        ).pack(anchor="w", pady=(6, 0))
 
-        principal = ttk.Frame(self.janela, padding=16)
-        principal.pack(fill="both", expand=True)
+        corpo = tk.Frame(self.janela, bg=FUNDO, padx=24, pady=6)
+        corpo.pack(fill="both", expand=True)
 
-        titulo = ttk.Label(
-            principal,
-            text="Explorador de Funções",
-            font=("Arial", 22, "bold")
-        )
-        titulo.pack(anchor="w")
+        barra = CartaoArredondado(corpo, largura=310, raio=24, margem=21)
+        barra.pack(side="left", fill="y", padx=(0, 16))
+        lateral = barra.conteudo
 
-        subtitulo = ttk.Label(
-            principal,
-            text="Explore funções afins e visualize seus resultados"
-        )
-        subtitulo.pack(anchor="w", pady=(0, 16))
+        self.texto(
+            lateral, "PARÂMETROS", 12, DESTAQUE, True
+        ).pack(anchor="w", pady=(0, 8))
 
-        conteudo = ttk.Frame(principal)
-        conteudo.pack(fill="both", expand=True)
-
-        lateral = ttk.Frame(conteudo, width=260)
-        lateral.pack(side="left", fill="y", padx=(0, 16))
-        lateral.pack_propagate(False)
-
-        self.area_grafico = ttk.Frame(conteudo)
-        self.area_grafico.pack(
-            side="right", fill="both", expand=True
-        )
-
-        ttk.Label(
-            lateral,
-            text="Parâmetros",
-            font=("Arial", 15, "bold")
-        ).pack(anchor="w", pady=(0, 14))
-
-        self.campos = {}
-
-        parametros = [
-            ("af", "Coeficiente a de f(x)", "2"),
-            ("bf", "Coeficiente b de f(x)", "1"),
-            ("ag", "Coeficiente a de g(x)", "-1"),
-            ("bg", "Coeficiente b de g(x)", "4"),
-            ("inicio", "Início do intervalo", "-5"),
-            ("fim", "Fim do intervalo", "5"),
+        grupos = [
+            ("FUNÇÃO f(x)", (("af", "a · angular", "2"), ("bf", "b · linear", "1"))),
+            ("FUNÇÃO g(x)", (("ag", "a · angular", "-1"), ("bg", "b · linear", "4"))),
+            ("INTERVALO", (("inicio", "Início", "-5"), ("fim", "Fim", "5"))),
         ]
 
-        for chave, rotulo, valor in parametros:
-            ttk.Label(
-                lateral, text=rotulo
-            ).pack(anchor="w", pady=(6, 2))
+        for titulo, campos in grupos:
+            self.texto(lateral, titulo, 9, SUAVE, True).pack(
+                anchor="w", pady=(8, 3)
+            )
+            linha = tk.Frame(lateral, bg=PAINEL)
+            linha.pack(fill="x")
+            linha.columnconfigure(0, weight=1, uniform="campos")
+            linha.columnconfigure(1, weight=1, uniform="campos")
+            for indice, (chave, rotulo, valor) in enumerate(campos):
+                coluna = tk.Frame(linha, bg=PAINEL)
+                coluna.grid(
+                    row=0, column=indice, sticky="ew",
+                    padx=(0, 5) if indice == 0 else (5, 0)
+                )
+                self.texto(coluna, rotulo, 9, SUAVE).pack(
+                    anchor="w", pady=(0, 3)
+                )
+                entrada = CampoArredondado(coluna, valor)
+                entrada.pack(fill="x")
+                entrada.bind_enter(self.gerar_grafico)
+                self.campos[chave] = entrada
 
-            entrada = ttk.Entry(lateral)
-            entrada.insert(0, valor)
-            entrada.pack(fill="x")
+        BotaoArredondado(
+            lateral, "GERAR GRÁFICO  ↗", self.gerar_grafico
+        ).pack(fill="x", pady=(13, 10))
 
-            self.campos[chave] = entrada
-
-        ttk.Button(
-            lateral,
-            text="Gerar gráfico",
-            command=self.gerar_grafico
-        ).pack(fill="x", pady=(20, 12))
-
-        ttk.Separator(lateral).pack(fill="x", pady=12)
-
-        ttk.Label(
-            lateral,
-            text="Análise matemática",
-            font=("Arial", 14, "bold")
-        ).pack(anchor="w", pady=(0, 10))
+        tk.Frame(lateral, bg=BORDA, height=1).pack(fill="x")
+        self.texto(
+            lateral, "ANÁLISE MATEMÁTICA", 11, DESTAQUE, True
+        ).pack(anchor="w", pady=(10, 7))
 
         self.resultado = tk.StringVar(value="")
-
-        ttk.Label(
+        tk.Label(
             lateral,
             textvariable=self.resultado,
+            bg=PAINEL,
+            fg=TEXTO,
+            anchor="nw",
             justify="left",
-            wraplength=245
+            font=("DejaVu Sans", 10),
+            wraplength=255,
         ).pack(anchor="w", fill="x")
+
+        painel_grafico = CartaoArredondado(corpo, raio=24, margem=17)
+        painel_grafico.pack(side="right", fill="both", expand=True)
+        direita = painel_grafico.conteudo
+        self.texto(
+            direita, "VISUALIZAÇÃO CARTESIANA", 11, SUAVE, True
+        ).pack(anchor="w", pady=(2, 10))
+
+        self.area_grafico = tk.Frame(direita, bg=PAINEL)
+        self.area_grafico.pack(fill="both", expand=True)
+
+        self.status = tk.StringVar(value="Pronto")
+        tk.Label(
+            self.janela,
+            textvariable=self.status,
+            bg=FUNDO,
+            fg=SUAVE,
+            anchor="w",
+            font=("DejaVu Sans", 9),
+            padx=28,
+            pady=12,
+        ).pack(fill="x")
 
     def gerar_grafico(self):
         try:
-            af = float(self.campos["af"].get().replace(",", "."))
-            bf = float(self.campos["bf"].get().replace(",", "."))
-            ag = float(self.campos["ag"].get().replace(",", "."))
-            bg = float(self.campos["bg"].get().replace(",", "."))
+            coeficientes = {}
+            for chave in ("af", "bf", "ag", "bg"):
+                valor = float(self.campos[chave].get().strip().replace(",", "."))
+                if not math.isfinite(valor):
+                    raise ValueError("Use apenas números finitos.")
+                coeficientes[chave] = valor
+
+            af = coeficientes["af"]
+            bf = coeficientes["bf"]
+            ag = coeficientes["ag"]
+            bg = coeficientes["bg"]
 
             inicio = int(self.campos["inicio"].get())
             fim = int(self.campos["fim"].get())
 
             if inicio >= fim:
-                raise ValueError(
-                    "O início deve ser menor que o fim."
-                )
-
+                raise ValueError("O início deve ser menor que o fim.")
             if fim - inicio > 1000:
-                raise ValueError(
-                    "Escolha um intervalo de até 1000 unidades."
-                )
+                raise ValueError("O intervalo deve ter até 1000 unidades.")
 
-        except ValueError as erro:
-            messagebox.showerror(
-                "Entrada inválida",
-                f"Verifique os valores informados.\n\n{erro}"
+            situacao, intersecao = calcular_intersecao(af, bf, ag, bg)
+            if intersecao is not None and not all(
+                math.isfinite(v) for v in intersecao
+            ):
+                raise ValueError("Os resultados excederam o limite numérico.")
+
+            nova_figura = exibir_grafico(
+                af, bf, ag, bg, inicio, fim, intersecao,
+                mostrar=False, tema_escuro=True,
             )
+        except (ValueError, OverflowError) as erro:
+            messagebox.showerror("Entrada inválida", str(erro))
             return
 
-        situacao, intersecao = calcular_intersecao(
-            af, bf, ag, bg
-        )
-
         if situacao == "coincidentes":
-            descricao_intersecao = "Retas coincidentes"
-
+            descricao = "Retas coincidentes"
         elif situacao == "paralelas":
-            descricao_intersecao = "Retas paralelas"
-
+            descricao = "Retas paralelas"
         else:
             x, y = intersecao
-            descricao_intersecao = f"({x:.2f}, {y:.2f})"
+            descricao = f"({x:.2f}, {y:.2f})"
+            if not inicio <= x <= fim:
+                descricao += "\n(fora do intervalo)"
 
-        texto = (
+        self.resultado.set(
             f"f(x) = {af:g}x + ({bf:g})\n"
-            f"Tipo: {classificar_funcao(af)}\n"
+            f"{classificar_funcao(af).capitalize()}\n"
             f"Raiz: {descrever_raiz(af, bf)}\n\n"
             f"g(x) = {ag:g}x + ({bg:g})\n"
-            f"Tipo: {classificar_funcao(ag)}\n"
+            f"{classificar_funcao(ag).capitalize()}\n"
             f"Raiz: {descrever_raiz(ag, bg)}\n\n"
-            f"Interseção:\n{descricao_intersecao}"
+            f"Interseção: {descricao}"
         )
 
-        # Remove o gráfico anterior.
         if self.toolbar is not None:
             self.toolbar.destroy()
-            self.toolbar = None
-
         if self.canvas is not None:
             self.canvas.get_tk_widget().destroy()
-            self.canvas = None
-
         if self.figura is not None:
             plt.close(self.figura)
 
-        # Cria um novo gráfico sem abrir outra janela.
-        self.figura = exibir_grafico(
-            af, bf, ag, bg,
-            inicio, fim, intersecao,
-            mostrar=False
-        )
-
+        self.figura = nova_figura
         self.canvas = FigureCanvasTkAgg(
-            self.figura,
-            master=self.area_grafico
+            self.figura, master=self.area_grafico
         )
         self.canvas.draw()
-
-        self.canvas.get_tk_widget().pack(
-            side="top",
-            fill="both",
-            expand=True
-        )
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
 
         self.toolbar = NavigationToolbar2Tk(
-            self.canvas,
-            self.area_grafico
+            self.canvas, self.area_grafico, pack_toolbar=False
         )
         self.toolbar.update()
+        self.toolbar.pack(side="bottom", fill="x")
 
-        self.resultado.set(texto)
+        self.status.set(f"Gráfico atualizado  •  Intervalo [{inicio}, {fim}]")
 
 
 if __name__ == "__main__":
