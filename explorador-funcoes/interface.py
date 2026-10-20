@@ -19,11 +19,9 @@ TEXTO = "#eff6ff"
 SUAVE = "#9fb0c9"
 DESTAQUE = "#38bdf8"
 BORDA = "#293b54"
-VERDE = "#4ade80"
 
 
 def pontos_arredondados(x1, y1, x2, y2, raio):
-
     raio = max(0, min(raio, (x2 - x1) / 2, (y2 - y1) / 2))
     pontos = []
     for centro_x, centro_y, angulo_inicial in (
@@ -42,14 +40,10 @@ def pontos_arredondados(x1, y1, x2, y2, raio):
 
 
 class CartaoArredondado(tk.Canvas):
-
     def __init__(self, parent, largura=None, raio=22, margem=18):
         super().__init__(
-            parent,
-            bg=FUNDO,
-            highlightthickness=0,
-            bd=0,
-            width=largura or 500,
+            parent, bg=FUNDO, highlightthickness=0,
+            bd=0, width=largura or 500,
         )
         self.raio = raio
         self.margem = margem
@@ -78,28 +72,18 @@ class CartaoArredondado(tk.Canvas):
 
 
 class CampoArredondado(tk.Canvas):
-
     def __init__(self, parent, valor):
         super().__init__(
-            parent,
-            bg=PAINEL,
-            highlightthickness=0,
-            bd=0,
-            height=40,
-            width=110,
+            parent, bg=PAINEL, highlightthickness=0,
+            bd=0, height=40, width=110,
         )
         self.borda = self.create_polygon(
             0, 0, 1, 0, 1, 1, 0, 1,
             fill=CAMPO, outline=BORDA, width=1,
         )
         self.entrada = tk.Entry(
-            self,
-            bg=CAMPO,
-            fg=TEXTO,
-            insertbackground=TEXTO,
-            relief="flat",
-            highlightthickness=0,
-            bd=0,
+            self, bg=CAMPO, fg=TEXTO, insertbackground=TEXTO,
+            relief="flat", highlightthickness=0, bd=0,
             font=("DejaVu Sans", 11),
         )
         self.entrada.insert(0, valor)
@@ -140,13 +124,9 @@ class CampoArredondado(tk.Canvas):
 class BotaoArredondado(tk.Canvas):
     def __init__(self, parent, texto, comando):
         super().__init__(
-            parent,
-            bg=PAINEL,
-            height=48,
-            highlightthickness=0,
-            bd=0,
-            cursor="hand2",
-            takefocus=True,
+            parent, bg=PAINEL, height=48,
+            highlightthickness=0, bd=0,
+            cursor="hand2", takefocus=True,
         )
         self.comando = comando
         self.fundo = self.create_polygon(
@@ -154,11 +134,8 @@ class BotaoArredondado(tk.Canvas):
             fill=DESTAQUE, outline="",
         )
         self.rotulo = self.create_text(
-            10, 24,
-            text=texto,
-            fill=FUNDO,
-            font=("DejaVu Sans", 11, "bold"),
-            anchor="center",
+            10, 24, text=texto, fill=FUNDO,
+            font=("DejaVu Sans", 11, "bold"), anchor="center",
         )
         self.bind("<Configure>", self.ajustar)
         self.bind("<Enter>", lambda _evento: self.itemconfigure(self.fundo, fill="#7dd3fc"))
@@ -177,10 +154,43 @@ class BotaoArredondado(tk.Canvas):
         self.coords(self.rotulo, evento.width / 2, evento.height / 2)
 
 
+class BotaoModo(tk.Canvas):
+    def __init__(self, parent, texto, comando):
+        super().__init__(
+            parent, bg=PAINEL, height=40, width=120,
+            highlightthickness=0, bd=0, cursor="hand2", takefocus=True,
+        )
+        self.comando = comando
+        self.selecionado = False
+        self.fundo = self.create_polygon(
+            0, 0, 1, 0, 1, 1, 0, 1, fill=CAMPO, outline="",
+        )
+        self.rotulo = self.create_text(
+            10, 20, text=texto, fill=SUAVE,
+            font=("DejaVu Sans", 10, "bold"), anchor="center",
+        )
+        self.bind("<Configure>", self.ajustar)
+        self.bind("<Button-1>", lambda _evento: self.comando())
+        self.bind("<Return>", lambda _evento: self.comando())
+        self.bind("<space>", lambda _evento: self.comando())
+
+    def ajustar(self, evento):
+        self.coords(
+            self.fundo,
+            *pontos_arredondados(1, 1, evento.width - 1, evento.height - 1, 12),
+        )
+        self.coords(self.rotulo, evento.width / 2, evento.height / 2)
+
+    def definir_selecionado(self, selecionado):
+        self.selecionado = selecionado
+        self.itemconfigure(self.fundo, fill=DESTAQUE if selecionado else CAMPO)
+        self.itemconfigure(self.rotulo, fill=FUNDO if selecionado else SUAVE)
+
+
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.1")
+        self.janela.title("Explorador de Funções 2.2")
         self.janela.geometry("1280x800")
         self.janela.minsize(990, 660)
         self.janela.configure(bg=FUNDO)
@@ -189,6 +199,7 @@ class ExploradorApp:
         self.canvas = None
         self.toolbar = None
         self.campos = {}
+        self.modo = "duas"
 
         self.criar_interface()
         self.gerar_grafico()
@@ -196,21 +207,36 @@ class ExploradorApp:
     @staticmethod
     def texto(parent, conteudo, tamanho=11, cor=TEXTO, negrito=False):
         return tk.Label(
-            parent,
-            text=conteudo,
-            bg=parent["bg"],
-            fg=cor,
+            parent, text=conteudo, bg=parent["bg"], fg=cor,
             font=("DejaVu Sans", tamanho, "bold" if negrito else "normal"),
-            anchor="w",
-            justify="left",
+            anchor="w", justify="left",
         )
+
+    def criar_grupo(self, parent, titulo, campos):
+        grupo = tk.Frame(parent, bg=PAINEL)
+        self.texto(grupo, titulo, 9, SUAVE, True).pack(anchor="w", pady=(8, 3))
+        linha = tk.Frame(grupo, bg=PAINEL)
+        linha.pack(fill="x")
+        linha.columnconfigure(0, weight=1, uniform="campos")
+        linha.columnconfigure(1, weight=1, uniform="campos")
+        for indice, (chave, rotulo, valor) in enumerate(campos):
+            coluna = tk.Frame(linha, bg=PAINEL)
+            coluna.grid(
+                row=0, column=indice, sticky="ew",
+                padx=(0, 5) if indice == 0 else (5, 0),
+            )
+            self.texto(coluna, rotulo, 9, SUAVE).pack(anchor="w", pady=(0, 3))
+            entrada = CampoArredondado(coluna, valor)
+            entrada.pack(fill="x")
+            entrada.bind_enter(self.gerar_grafico)
+            self.campos[chave] = entrada
+        grupo.pack(fill="x")
+        return grupo
 
     def criar_interface(self):
         topo = tk.Frame(self.janela, bg=FUNDO, padx=28, pady=23)
         topo.pack(fill="x")
-        self.texto(
-            topo, "EXPLORADOR DE FUNÇÕES", 20, TEXTO, True
-        ).pack(anchor="w")
+        self.texto(topo, "EXPLORADOR DE FUNÇÕES", 20, TEXTO, True).pack(anchor="w")
         self.texto(
             topo, "Laboratório interativo de funções afins", 10, SUAVE
         ).pack(anchor="w", pady=(6, 0))
@@ -222,37 +248,36 @@ class ExploradorApp:
         barra.pack(side="left", fill="y", padx=(0, 16))
         lateral = barra.conteudo
 
-        self.texto(
-            lateral, "PARÂMETROS", 12, DESTAQUE, True
-        ).pack(anchor="w", pady=(0, 8))
+        self.texto(lateral, "PARÂMETROS", 12, DESTAQUE, True).pack(
+            anchor="w", pady=(0, 7)
+        )
+        self.texto(lateral, "QUANTAS FUNÇÕES?", 9, SUAVE, True).pack(
+            anchor="w", pady=(3, 5)
+        )
+        selecao = tk.Frame(lateral, bg=PAINEL)
+        selecao.pack(fill="x", pady=(0, 5))
+        self.botao_uma = BotaoModo(
+            selecao, "1 função", lambda: self.alterar_modo("uma")
+        )
+        self.botao_uma.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        self.botao_duas = BotaoModo(
+            selecao, "2 funções", lambda: self.alterar_modo("duas")
+        )
+        self.botao_duas.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        self.botao_duas.definir_selecionado(True)
 
-        grupos = [
-            ("FUNÇÃO f(x)", (("af", "a · angular", "2"), ("bf", "b · linear", "1"))),
-            ("FUNÇÃO g(x)", (("ag", "a · angular", "-1"), ("bg", "b · linear", "4"))),
-            ("INTERVALO", (("inicio", "Início", "-5"), ("fim", "Fim", "5"))),
-        ]
-
-        for titulo, campos in grupos:
-            self.texto(lateral, titulo, 9, SUAVE, True).pack(
-                anchor="w", pady=(8, 3)
-            )
-            linha = tk.Frame(lateral, bg=PAINEL)
-            linha.pack(fill="x")
-            linha.columnconfigure(0, weight=1, uniform="campos")
-            linha.columnconfigure(1, weight=1, uniform="campos")
-            for indice, (chave, rotulo, valor) in enumerate(campos):
-                coluna = tk.Frame(linha, bg=PAINEL)
-                coluna.grid(
-                    row=0, column=indice, sticky="ew",
-                    padx=(0, 5) if indice == 0 else (5, 0)
-                )
-                self.texto(coluna, rotulo, 9, SUAVE).pack(
-                    anchor="w", pady=(0, 3)
-                )
-                entrada = CampoArredondado(coluna, valor)
-                entrada.pack(fill="x")
-                entrada.bind_enter(self.gerar_grafico)
-                self.campos[chave] = entrada
+        self.grupo_f = self.criar_grupo(
+            lateral, "FUNÇÃO f(x)",
+            (("af", "a · angular", "2"), ("bf", "b · linear", "1")),
+        )
+        self.grupo_g = self.criar_grupo(
+            lateral, "FUNÇÃO g(x)",
+            (("ag", "a · angular", "-1"), ("bg", "b · linear", "4")),
+        )
+        self.grupo_intervalo = self.criar_grupo(
+            lateral, "INTERVALO",
+            (("inicio", "Início", "-5"), ("fim", "Fim", "5")),
+        )
 
         BotaoArredondado(
             lateral, "GERAR GRÁFICO  ↗", self.gerar_grafico
@@ -265,13 +290,8 @@ class ExploradorApp:
 
         self.resultado = tk.StringVar(value="")
         tk.Label(
-            lateral,
-            textvariable=self.resultado,
-            bg=PAINEL,
-            fg=TEXTO,
-            anchor="nw",
-            justify="left",
-            font=("DejaVu Sans", 10),
+            lateral, textvariable=self.resultado, bg=PAINEL, fg=TEXTO,
+            anchor="nw", justify="left", font=("DejaVu Sans", 10),
             wraplength=255,
         ).pack(anchor="w", fill="x")
 
@@ -287,39 +307,48 @@ class ExploradorApp:
 
         self.status = tk.StringVar(value="Pronto")
         tk.Label(
-            self.janela,
-            textvariable=self.status,
-            bg=FUNDO,
-            fg=SUAVE,
-            anchor="w",
-            font=("DejaVu Sans", 9),
-            padx=28,
-            pady=12,
+            self.janela, textvariable=self.status, bg=FUNDO,
+            fg=SUAVE, anchor="w", font=("DejaVu Sans", 9),
+            padx=28, pady=12,
         ).pack(fill="x")
+
+    def alterar_modo(self, modo):
+        if self.modo == modo:
+            return
+        self.modo = modo
+        self.botao_uma.definir_selecionado(modo == "uma")
+        self.botao_duas.definir_selecionado(modo == "duas")
+        if modo == "uma":
+            self.grupo_g.pack_forget()
+        else:
+            self.grupo_g.pack(fill="x", before=self.grupo_intervalo)
+        self.gerar_grafico()
+
+    def ler_coeficiente(self, chave):
+        valor = float(self.campos[chave].get().strip().replace(",", "."))
+        if not math.isfinite(valor):
+            raise ValueError("Use apenas números finitos.")
+        return valor
 
     def gerar_grafico(self):
         try:
-            coeficientes = {}
-            for chave in ("af", "bf", "ag", "bg"):
-                valor = float(self.campos[chave].get().strip().replace(",", "."))
-                if not math.isfinite(valor):
-                    raise ValueError("Use apenas números finitos.")
-                coeficientes[chave] = valor
-
-            af = coeficientes["af"]
-            bf = coeficientes["bf"]
-            ag = coeficientes["ag"]
-            bg = coeficientes["bg"]
+            af = self.ler_coeficiente("af")
+            bf = self.ler_coeficiente("bf")
+            exibir_g = self.modo == "duas"
+            ag = self.ler_coeficiente("ag") if exibir_g else None
+            bg = self.ler_coeficiente("bg") if exibir_g else None
 
             inicio = int(self.campos["inicio"].get())
             fim = int(self.campos["fim"].get())
-
             if inicio >= fim:
                 raise ValueError("O início deve ser menor que o fim.")
             if fim - inicio > 1000:
                 raise ValueError("O intervalo deve ter até 1000 unidades.")
 
-            situacao, intersecao = calcular_intersecao(af, bf, ag, bg)
+            situacao, intersecao = (
+                calcular_intersecao(af, bf, ag, bg)
+                if exibir_g else (None, None)
+            )
             if intersecao is not None and not all(
                 math.isfinite(v) for v in intersecao
             ):
@@ -327,31 +356,34 @@ class ExploradorApp:
 
             nova_figura = exibir_grafico(
                 af, bf, ag, bg, inicio, fim, intersecao,
-                mostrar=False, tema_escuro=True,
+                mostrar=False, tema_escuro=True, exibir_g=exibir_g,
             )
         except (ValueError, OverflowError) as erro:
             messagebox.showerror("Entrada inválida", str(erro))
             return
 
-        if situacao == "coincidentes":
-            descricao = "Retas coincidentes"
-        elif situacao == "paralelas":
-            descricao = "Retas paralelas"
-        else:
-            x, y = intersecao
-            descricao = f"({x:.2f}, {y:.2f})"
-            if not inicio <= x <= fim:
-                descricao += "\n(fora do intervalo)"
-
-        self.resultado.set(
+        descricao_f = (
             f"f(x) = {af:g}x + ({bf:g})\n"
             f"{classificar_funcao(af).capitalize()}\n"
-            f"Raiz: {descrever_raiz(af, bf)}\n\n"
-            f"g(x) = {ag:g}x + ({bg:g})\n"
-            f"{classificar_funcao(ag).capitalize()}\n"
-            f"Raiz: {descrever_raiz(ag, bg)}\n\n"
-            f"Interseção: {descricao}"
+            f"Raiz: {descrever_raiz(af, bf)}"
         )
+        if exibir_g:
+            if situacao == "coincidentes":
+                descricao = "Retas coincidentes"
+            elif situacao == "paralelas":
+                descricao = "Retas paralelas"
+            else:
+                x, y = intersecao
+                descricao = f"({x:.2f}, {y:.2f})"
+                if not inicio <= x <= fim:
+                    descricao += "\n(fora do intervalo)"
+            descricao_f += (
+                f"\n\ng(x) = {ag:g}x + ({bg:g})\n"
+                f"{classificar_funcao(ag).capitalize()}\n"
+                f"Raiz: {descrever_raiz(ag, bg)}\n\n"
+                f"Interseção: {descricao}"
+            )
+        self.resultado.set(descricao_f)
 
         if self.toolbar is not None:
             self.toolbar.destroy()
@@ -373,7 +405,10 @@ class ExploradorApp:
         self.toolbar.update()
         self.toolbar.pack(side="bottom", fill="x")
 
-        self.status.set(f"Gráfico atualizado  •  Intervalo [{inicio}, {fim}]")
+        nome_modo = "1 função" if not exibir_g else "2 funções"
+        self.status.set(
+            f"Gráfico atualizado  •  {nome_modo}  •  Intervalo [{inicio}, {fim}]"
+        )
 
 
 if __name__ == "__main__":

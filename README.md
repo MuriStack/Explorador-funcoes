@@ -4,7 +4,7 @@ Aplicação em **Python** para explorar e comparar funções afins em uma interf
 
 ## Sobre o projeto
 
-O Explorador de Funções permite definir duas funções afins, identificar raízes, classificações e interseções e visualizar os resultados no plano cartesiano. A versão **2.1 — Dark Edition** apresenta uma interface escura com **painéis, campos e botão de cantos arredondados**, gráficos personalizados e um painel integrado de análise matemática.
+O Explorador de Funções permite analisar **uma função afim isoladamente** ou **comparar duas funções**, identificando raízes, classificações e, no modo de comparação, pontos de interseção. A versão **2.2** acrescenta a seleção de quantidade de funções e mantém a interface escura com cantos arredondados.
 
 ## Demonstração
 
@@ -12,14 +12,16 @@ O Explorador de Funções permite definir duas funções afins, identificar raí
 
 ## Funcionalidades
 
-- Interface gráfica escura, com painéis e campos arredondados e coeficientes de `f(x)` e `g(x)` organizados em pares.
+- Seleção entre os modos **1 função** e **2 funções**.
+- Exibição apenas dos campos necessários ao modo selecionado.
+- Interface escura com painéis, botões e campos arredondados.
 - Gráfico interativo com zoom e movimentação.
 - Classificação de funções crescentes, decrescentes ou constantes.
-- Cálculo e identificação de raízes e interseção.
-- Identificação de funções paralelas e coincidentes.
-- Configuração do intervalo e atualização do gráfico sem reiniciar.
-- Validação de valores informados.
-- Versão alternativa executada pelo terminal.
+- Identificação das raízes das funções.
+- Cálculo de interseção e identificação de retas paralelas ou coincidentes no modo de duas funções.
+- Configuração do intervalo e atualização do gráfico sem reiniciar a aplicação.
+- Validação dos valores informados.
+- Versão alternativa executada pelo terminal para comparação entre duas funções.
 
 ## Tecnologias utilizadas
 
@@ -73,7 +75,9 @@ cd explorador-funcoes
 python interface.py
 ```
 
-Para usar a versão de terminal:
+Selecione **1 função** para analisar somente `f(x)`, ou **2 funções** para comparar `f(x)` e `g(x)`.
+
+Para usar a versão de terminal, que mantém a comparação entre duas funções:
 
 ```bash
 python explorador.py
@@ -82,15 +86,15 @@ python explorador.py
 ## Organização do código
 
 - **`matematica.py`** — cálculos e classificações.
-- **`visualizacao.py`** — montagem dos gráficos e estilos.
-- **`interface.py`** — janela, controles e interação com o usuário.
-- **`explorador.py`** — aplicação no terminal.
+- **`visualizacao.py`** — montagem dos gráficos e estilos, com suporte a uma ou duas funções.
+- **`interface.py`** — janela, seleção do modo, controles e interação com o usuário.
+- **`explorador.py`** — aplicação original no terminal.
 
 ## Próximos passos
 
+- Expandir o suporte para funções quadráticas.
 - Permitir salvar gráficos como imagens.
 - Melhorar a edição e o gerenciamento de funções.
-- Expandir o suporte para outros tipos de funções.
 
 ## Autor
 

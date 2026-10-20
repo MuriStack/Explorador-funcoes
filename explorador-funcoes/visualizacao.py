@@ -7,9 +7,10 @@ from matematica import (
     descrever_raiz,
 )
 
+
 def exibir_grafico(
     af, bf, ag, bg, inicio, fim, intersecao,
-    mostrar=True, tema_escuro=False
+    mostrar=True, tema_escuro=False, exibir_g=True
 ):
     cores = {
         "fundo": "#0b1220" if tema_escuro else "#ffffff",
@@ -27,21 +28,23 @@ def exibir_grafico(
 
     valores_x = list(range(inicio, fim + 1))
     valores_yf = [calcular_funcao(x, af, bf) for x in valores_x]
-    valores_yg = [calcular_funcao(x, ag, bg) for x in valores_x]
-
     eixo.plot(
         valores_x, valores_yf, color=cores["f"],
         linewidth=2.5, label="f(x)"
     )
-    eixo.plot(
-        valores_x, valores_yg, color=cores["g"],
-        linewidth=2.5, label="g(x)"
-    )
 
-    for nome, a, b, cor, deslocamento in [
-        ("f", af, bf, cores["f"], (8, 12)),
-        ("g", ag, bg, cores["g"], (8, -18)),
-    ]:
+    if exibir_g:
+        valores_yg = [calcular_funcao(x, ag, bg) for x in valores_x]
+        eixo.plot(
+            valores_x, valores_yg, color=cores["g"],
+            linewidth=2.5, label="g(x)"
+        )
+
+    funcoes = [("f", af, bf, cores["f"], (8, 12))]
+    if exibir_g:
+        funcoes.append(("g", ag, bg, cores["g"], (8, -18)))
+
+    for nome, a, b, cor, deslocamento in funcoes:
         raiz = calcular_raiz(a, b)
         if raiz is not None and inicio <= raiz <= fim:
             eixo.scatter(
@@ -54,7 +57,7 @@ def exibir_grafico(
                 color=cor, fontsize=9
             )
 
-    if intersecao is not None:
+    if exibir_g and intersecao is not None:
         x_intersecao, y_intersecao = intersecao
         if inicio <= x_intersecao <= fim:
             eixo.scatter(
@@ -72,10 +75,8 @@ def exibir_grafico(
     eixo.axhline(0, color=cores["texto"], alpha=0.55, linewidth=1)
     eixo.axvline(0, color=cores["texto"], alpha=0.55, linewidth=1)
     eixo.set_xlim(inicio, fim)
-    eixo.set_title(
-        "Comparação de funções afins",
-        color=cores["texto"], fontsize=14, pad=18
-    )
+    titulo = "Comparação de funções afins" if exibir_g else "Análise de função afim"
+    eixo.set_title(titulo, color=cores["texto"], fontsize=14, pad=18)
     eixo.set_xlabel("x", color=cores["texto"])
     eixo.set_ylabel("y", color=cores["texto"])
     eixo.tick_params(colors=cores["texto"])
@@ -93,10 +94,13 @@ def exibir_grafico(
     if not tema_escuro:
         texto_analise = (
             f"f(x): {classificar_funcao(af)}\n"
-            f"Raiz de f: {descrever_raiz(af, bf)}\n\n"
-            f"g(x): {classificar_funcao(ag)}\n"
-            f"Raiz de g: {descrever_raiz(ag, bg)}"
+            f"Raiz de f: {descrever_raiz(af, bf)}"
         )
+        if exibir_g:
+            texto_analise += (
+                f"\n\ng(x): {classificar_funcao(ag)}\n"
+                f"Raiz de g: {descrever_raiz(ag, bg)}"
+            )
         eixo.text(
             0.02, 0.98, texto_analise,
             transform=eixo.transAxes, va="top",
@@ -104,8 +108,6 @@ def exibir_grafico(
         )
 
     figura.tight_layout()
-
     if mostrar:
         plt.show()
-
     return figura
