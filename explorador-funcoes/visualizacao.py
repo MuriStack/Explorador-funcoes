@@ -8,7 +8,7 @@ from matematica import (
 )
 
 
-def exibir_grafico(af, bf, ag, bg, inicio, fim, intersecao):
+def exibir_grafico(af, bf, ag, bg, inicio, fim, intersecao, mostrar=True):
     valores_x = list(range(inicio, fim + 1))
 
     valores_yf = [
@@ -95,4 +95,9 @@ def exibir_grafico(af, bf, ag, bg, inicio, fim, intersecao):
         )
     )
 
-    plt.show()
+    figura = plt.gcf()
+
+    if mostrar:
+        plt.show()
+
+    return figura
