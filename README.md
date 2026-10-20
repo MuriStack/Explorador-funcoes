@@ -1,12 +1,12 @@
 # 📈 Explorador de Funções
 
-Aplicação em **Python** para analisar e comparar funções afins e quadráticas com gráficos interativos.
+Aplicação em **Python** para analisar, comparar e exportar gráficos de funções afins e quadráticas.
 
 ## Sobre o projeto
 
-O Explorador de Funções permite estudar **uma função isoladamente** ou **comparar duas funções**, escolhendo de forma independente se cada uma é afim (`ax + b`) ou quadrática (`ax² + bx + c`).
+O Explorador de Funções permite analisar **uma função isoladamente** ou **comparar duas funções**, escolhendo independentemente funções afins (`ax + b`) ou quadráticas (`ax² + bx + c`).
 
-A versão **2.3** acrescenta parábolas, discriminante, raízes reais, vértice e interseções entre retas e parábolas. O aplicativo mantém a interface escura com bordas arredondadas.
+Na versão **2.4**, a interface ganhou o botão **Salvar gráfico**, que permite exportar o gráfico atual em **PNG**, escolhendo o nome e a pasta de destino. O aplicativo mantém o tema escuro e os componentes arredondados.
 
 ## Demonstração
 
@@ -16,20 +16,22 @@ A versão **2.3** acrescenta parábolas, discriminante, raízes reais, vértice 
 
 - Alternância entre os modos **1 função** e **2 funções**.
 - Seleção independente de função **afim** ou **quadrática** para `f(x)` e `g(x)`.
-- Campos de coeficientes que se adaptam ao tipo selecionado.
+- Campos de coeficientes adaptados ao tipo de função.
 - Gráficos interativos com zoom e movimentação.
-- Identificação de raízes reais e, para quadráticas, cálculo do discriminante **Δ** e do vértice.
-- Indicação da concavidade de parábolas e do comportamento de funções afins.
-- Identificação de **zero, uma ou duas interseções** entre as funções, ou de curvas coincidentes.
-- Destaque das raízes, dos vértices e das interseções presentes no intervalo visualizado.
-- Validação dos coeficientes e do intervalo, com mensagens para entradas inválidas.
-- Versão tradicional de terminal preservada para comparação entre duas funções afins.
+- Destaque de raízes, vértices e interseções visíveis no intervalo.
+- Cálculo do discriminante **Δ** e do vértice para funções quadráticas.
+- Classificação de funções afins e indicação da concavidade de parábolas.
+- Identificação de até duas interseções reais ou de curvas coincidentes.
+- Configuração do intervalo e atualização do gráfico sem reiniciar a aplicação.
+- Exportação do gráfico atual como **imagem PNG** pela interface.
+- Validação de entradas, com mensagens de erro.
+- Versão tradicional de terminal preservada para comparar duas funções afins.
 
 ## Tecnologias utilizadas
 
-- **Python** — cálculos matemáticos e organização do programa.
-- **Tkinter** — interface gráfica.
-- **Matplotlib** — gráficos e ferramentas de navegação.
+- **Python** — cálculos e organização do programa.
+- **Tkinter** — interface gráfica e janela de seleção do arquivo.
+- **Matplotlib** — gráficos, navegação e exportação em PNG.
 - **Git e GitHub** — versionamento do projeto.
 
 ## Estrutura do projeto
@@ -77,9 +79,18 @@ cd explorador-funcoes
 python interface.py
 ```
 
-Selecione uma ou duas funções e escolha **Afim** ou **Quadrática** para cada uma. No modo quadrático, o campo do coeficiente `c` aparece automaticamente.
+Selecione **1 função** ou **2 funções**, escolha o tipo de cada uma e configure os coeficientes.
 
-A versão de terminal continua disponível para comparação de **duas funções afins**:
+### 4. Exporte um gráfico
+
+1. Clique em **GERAR GRÁFICO** para atualizar a visualização.
+2. Clique em **SALVAR GRÁFICO**.
+3. Escolha a pasta e o nome do arquivo.
+4. Confirme a gravação em **PNG**.
+
+A imagem exportada contém **somente o gráfico**, sem o painel de controles da aplicação. Ela é independente da captura de tela usada na seção **Demonstração** do README.
+
+A versão de terminal permanece disponível para comparar **duas funções afins**:
 
 ```bash
 python explorador.py
@@ -89,14 +100,14 @@ python explorador.py
 
 - **`matematica.py`** — cálculo de raízes, discriminante, vértice e interseções.
 - **`visualizacao.py`** — desenho de retas, parábolas e pontos notáveis.
-- **`interface.py`** — seleção de tipos, controles e apresentação dos resultados.
+- **`interface.py`** — interface, análise matemática e exportação de PNG.
 - **`explorador.py`** — versão original no terminal.
 
 ## Próximos passos
 
-- Exportação do gráfico como imagem.
-- Melhorias na edição e no gerenciamento das funções.
-- Expansão para outros tipos de funções.
+- Melhorar a edição e o gerenciamento de funções.
+- Permitir personalizar mais opções dos gráficos.
+- Expandir o suporte para outros tipos de funções.
 
 ## Autor
 

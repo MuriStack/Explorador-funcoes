@@ -1,12 +1,9 @@
 import math
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import (
-    FigureCanvasTkAgg,
-    NavigationToolbar2Tk,
-)
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 from matematica import (
     calcular_intersecoes_polinomios,
@@ -129,24 +126,33 @@ class CampoArredondado(tk.Canvas):
 
 
 class BotaoArredondado(tk.Canvas):
-    def __init__(self, parent, texto, comando):
+    def __init__(self, parent, texto, comando, cor=DESTAQUE, contorno=False):
         super().__init__(
-            parent, bg=PAINEL, height=46,
+            parent, bg=PAINEL, height=44,
             highlightthickness=0, bd=0,
             cursor="hand2", takefocus=True,
         )
         self.comando = comando
+        self.cor = cor
+        self.contorno = contorno
         self.fundo = self.create_polygon(
             0, 0, 1, 0, 1, 1, 0, 1,
-            fill=DESTAQUE, outline="",
+            fill=CAMPO if contorno else cor,
+            outline=BORDA if contorno else "",
+            width=1,
         )
         self.rotulo = self.create_text(
-            10, 23, text=texto, fill=FUNDO,
-            font=("DejaVu Sans", 11, "bold"), anchor="center",
+            10, 22, text=texto,
+            fill=TEXTO if contorno else FUNDO,
+            font=("DejaVu Sans", 10, "bold"), anchor="center",
         )
         self.bind("<Configure>", self.ajustar)
-        self.bind("<Enter>", lambda _evento: self.itemconfigure(self.fundo, fill="#7dd3fc"))
-        self.bind("<Leave>", lambda _evento: self.itemconfigure(self.fundo, fill=DESTAQUE))
+        self.bind("<Enter>", lambda _evento: self.itemconfigure(
+            self.fundo, fill="#314761" if contorno else "#7dd3fc"
+        ))
+        self.bind("<Leave>", lambda _evento: self.itemconfigure(
+            self.fundo, fill=CAMPO if contorno else cor
+        ))
         self.bind("<Button-1>", lambda _evento: self.comando())
         self.bind("<Return>", lambda _evento: self.comando())
         self.bind("<space>", lambda _evento: self.comando())
@@ -193,7 +199,7 @@ class BotaoModo(tk.Canvas):
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 2.3")
+        self.janela.title("Explorador de Funções 2.4")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -267,8 +273,9 @@ class ExploradorApp:
              (f"b{nome}", "b · linear", b)),
         )
         linha_c = tk.Frame(grupo, bg=PAINEL)
-        rotulo_c = self.texto(linha_c, "c · constante", 9, SUAVE)
-        rotulo_c.pack(anchor="w", pady=(3, 3))
+        self.texto(linha_c, "c · constante", 9, SUAVE).pack(
+            anchor="w", pady=(3, 3)
+        )
         entrada_c = CampoArredondado(linha_c, c)
         entrada_c.pack(fill="x")
         entrada_c.bind_enter(self.gerar_grafico)
@@ -349,7 +356,11 @@ class ExploradorApp:
 
         BotaoArredondado(
             interno, "GERAR GRÁFICO  ↗", self.gerar_grafico
-        ).pack(fill="x", pady=(14, 10))
+        ).pack(fill="x", pady=(14, 6))
+        BotaoArredondado(
+            interno, "SALVAR GRÁFICO  ↓", self.salvar_grafico, contorno=True
+        ).pack(fill="x", pady=(0, 12))
+
         tk.Frame(interno, bg=BORDA, height=1).pack(fill="x")
         self.texto(
             interno, "ANÁLISE MATEMÁTICA", 11, DESTAQUE, True
@@ -530,6 +541,36 @@ class ExploradorApp:
             f"{'2 funções' if numero_funcoes == 2 else '1 função'}"
             f"  •  Intervalo [{inicio}, {fim}]"
         )
+
+    def salvar_grafico(self):
+        if self.figura is None:
+            messagebox.showwarning("Sem gráfico", "Gere um gráfico antes de salvar.")
+            return
+
+        caminho = filedialog.asksaveasfilename(
+            title="Salvar gráfico como PNG",
+            defaultextension=".png",
+            filetypes=[("Imagem PNG", "*.png")],
+            initialfile="grafico_funcoes.png",
+            parent=self.janela,
+        )
+        if not caminho:
+            return
+
+        try:
+            self.figura.savefig(
+                caminho,
+                format="png",
+                dpi=220,
+                facecolor=self.figura.get_facecolor(),
+                bbox_inches="tight",
+            )
+        except (OSError, ValueError, RuntimeError) as erro:
+            messagebox.showerror("Erro ao salvar", f"Não foi possível salvar o gráfico.\n\n{erro}")
+            return
+
+        self.status.set(f"Gráfico salvo em: {caminho}")
+        messagebox.showinfo("Gráfico salvo", "Imagem PNG exportada com sucesso.")
 
 
 if __name__ == "__main__":
