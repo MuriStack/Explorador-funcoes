@@ -15,7 +15,7 @@ from matematica import (
 
 def desenhar_funcoes(
     funcoes, inicio, fim, mostrar=False, tema_escuro=True,
-    intersecoes=None, par_intersecoes=("f", "g"),
+    intersecoes=None, par_intersecoes=("f", "g"), raizes=None,
 ):
     cores = {
         "fundo": "#0b1220" if tema_escuro else "#ffffff",
@@ -49,13 +49,22 @@ def desenhar_funcoes(
             raise ValueError(f"A função {nome}(x) não possui valores reais no intervalo escolhido.")
         eixo.plot(xs, ys, color=cor, linewidth=2.5, label=f"{nome}(x)")
 
-        for raiz in raizes_reais(polinomio) if polinomio is not None else []:
-            if inicio <= raiz <= fim:
-                eixo.scatter(raiz, 0, color=cor, marker="X", s=100, zorder=5,
-                             label=f"Raiz de {nome}")
-                eixo.annotate(f"({raiz:.2f}, 0)", (raiz, 0),
-                              xytext=(9, 12), textcoords="offset points",
-                              color=cor, fontsize=9)
+        lista_raizes = (
+            raizes[nome][1] if raizes is not None
+            else raizes_reais(polinomio) if polinomio is not None else []
+        )
+        raizes_visiveis = [raiz for raiz in lista_raizes if inicio <= raiz <= fim]
+        for indice, raiz in enumerate(raizes_visiveis):
+            eixo.scatter(
+                raiz, 0, color=cor, marker="X", s=100, zorder=5,
+                label=f"Raiz de {nome}" if indice == 0 else None,
+            )
+            if len(raizes_visiveis) <= 6:
+                eixo.annotate(
+                    f"({raiz:.4f}, 0)", (raiz, 0),
+                    xytext=(9, 12), textcoords="offset points",
+                    color=cor, fontsize=9,
+                )
 
         ponto_vertice = vertice(polinomio) if polinomio is not None else None
         if ponto_vertice is not None:

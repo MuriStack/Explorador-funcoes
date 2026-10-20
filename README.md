@@ -16,14 +16,14 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 - Suporte a funções **afins, quadráticas e expressões matemáticas**.
 - Adição e remoção dinâmica de funções.
 - Cálculo de raízes, vértices, discriminante e interseções.
+- **Raízes numéricas de expressões não polinomiais**, destacadas no gráfico.
 - Interseções numéricas entre diferentes tipos de funções.
 - Cursor de precisão com **seis casas decimais**.
-- Zoom inteligente em pontos notáveis.
+- Zoom inteligente em pontos notáveis, incluindo raízes numéricas.
 - Navegação interativa com zoom e movimentação.
 - Painel de parâmetros recolhível.
 - Interface escura com controles personalizados.
 - Exportação de gráficos em **PNG**.
-- Validação de entradas matemáticas.
 
 ## Expressões matemáticas
 
@@ -105,9 +105,9 @@ python explorador.py
 
 ## Limitações
 
-- A análise algébrica de raízes e vértices é limitada a polinômios de grau até dois.
-- As interseções numéricas são aproximadas e podem não identificar todos os pontos.
-- Os cálculos de interseções consideram o intervalo configurado.
+- A análise **algébrica** de raízes e vértices é limitada a polinômios de grau até dois.
+- Raízes e interseções numéricas são aproximações e podem não identificar todos os pontos.
+- As buscas numéricas consideram o intervalo configurado.
 
 ## Autor
 

@@ -14,7 +14,7 @@ from matematica import (
     raizes_reais,
     vertice,
 )
-from intersecoes import encontrar_intersecoes
+from intersecoes import encontrar_intersecoes, encontrar_raizes
 from visualizacao import desenhar_funcoes
 
 
@@ -571,7 +571,7 @@ class CursorPrecisao:
 
 
 class FocoPontosNotaveis:
-    def __init__(self, canvas, funcoes, intersecoes, par, toolbar, cursor, status):
+    def __init__(self, canvas, funcoes, intersecoes, par, toolbar, cursor, status, raizes=None):
         self.canvas = canvas
         self.eixo = canvas.figure.axes[0]
         self.toolbar = toolbar
@@ -591,13 +591,16 @@ class FocoPontosNotaveis:
 
         for nome, funcao in funcoes:
             polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
-            if polinomio is None:
-                continue
             cor = self.cores[nome]
-            ponto_vertice = vertice(polinomio)
-            if ponto_vertice is not None:
-                self.registrar(f"Vértice de {nome}(x)", *ponto_vertice, cor)
-            for raiz in raizes_reais(polinomio):
+            if polinomio is not None:
+                ponto_vertice = vertice(polinomio)
+                if ponto_vertice is not None:
+                    self.registrar(f"Vértice de {nome}(x)", *ponto_vertice, cor)
+            lista_raizes = (
+                raizes[nome][1] if raizes is not None
+                else raizes_reais(polinomio) if polinomio is not None else []
+            )
+            for raiz in lista_raizes:
                 self.registrar(f"Raiz de {nome}(x)", raiz, 0.0, cor)
 
         self.marcador, = self.eixo.plot(
@@ -1127,13 +1130,21 @@ class ExploradorApp:
             valor = 0.0
         return f"{valor:.4f}".rstrip("0").rstrip(".")
 
-    def descrever_polinomio(self, nome, polinomio):
+    def descrever_polinomio(self, nome, polinomio, raizes=None):
         if isinstance(polinomio, Expressao):
             if polinomio.polinomio is None:
-                return (
-                    f"{nome}(x) = {polinomio.texto}\n"
-                    "Análise algébrica disponível para polinômios de grau até 2."
-                )
+                situacao, pontos = raizes or ("sem_raizes", [])
+                if situacao == "todos":
+                    descricao = "Função nula no intervalo analisado"
+                elif situacao == "sem_raizes":
+                    descricao = "Nenhuma raiz encontrada no intervalo (busca numérica)"
+                else:
+                    descricao = "Raízes numéricas: " + ", ".join(
+                        f"{x:.6f}" for x in pontos[:12]
+                    )
+                    if len(pontos) > 12:
+                        descricao += f" ... e mais {len(pontos) - 12}"
+                return f"{nome}(x) = {polinomio.texto}\n{descricao}"
             descricao = self.descrever_polinomio(nome, polinomio.polinomio)
             linhas = descricao.split("\n")
             linhas[0] = f"{nome}(x) = {polinomio.texto}"
@@ -1183,6 +1194,11 @@ class ExploradorApp:
                     if valor is not None and not math.isfinite(valor):
                         raise ValueError("Os coeficientes geraram números muito grandes.")
 
+            raizes_por_funcao = {
+                nome: encontrar_raizes(funcao, inicio, fim)
+                for nome, funcao in funcoes
+            }
+
             par = (
                 self.primeira_intersecao.get(), self.segunda_intersecao.get(),
             )
@@ -1198,6 +1214,7 @@ class ExploradorApp:
             nova_figura = desenhar_funcoes(
                 funcoes, inicio, fim, mostrar=False, tema_escuro=True,
                 intersecoes=intersecoes, par_intersecoes=par,
+                raizes=raizes_por_funcao,
             )
 
         except (ValueError, OverflowError, ZeroDivisionError) as erro:
@@ -1205,7 +1222,7 @@ class ExploradorApp:
             return
 
         descricoes = [
-            self.descrever_polinomio(nome, polinomio)
+            self.descrever_polinomio(nome, polinomio, raizes_por_funcao[nome])
             for nome, polinomio in funcoes
         ]
         if intersecoes is not None:
@@ -1262,7 +1279,7 @@ class ExploradorApp:
         )
         self.foco_pontos = FocoPontosNotaveis(
             self.canvas, funcoes, intersecoes, par, self.toolbar,
-            self.cursor_precisao, self.status,
+            self.cursor_precisao, self.status, raizes=raizes_por_funcao,
         )
         self.cursor_precisao.foco = self.foco_pontos
 

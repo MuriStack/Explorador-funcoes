@@ -140,3 +140,51 @@ def encontrar_intersecoes(primeira, segunda, inicio, fim):
             break
 
     return ("pontos", confirmados) if confirmados else ("sem_intersecao", [])
+
+
+def encontrar_raizes(funcao, inicio, fim):
+    situacao, pontos = encontrar_intersecoes(
+        funcao, (0.0, 0.0, 0.0), inicio, fim
+    )
+    if situacao == "coincidentes":
+        return "todos", []
+    candidatos = [x for x, _ in pontos]
+    if isinstance(funcao, Expressao) and funcao.polinomio is None:
+        candidatos.extend(raizes_nas_bordas_do_dominio(funcao, inicio, fim))
+    tolerancia = max(1e-7, (fim - inicio) * 1e-7)
+    raizes = []
+    for x in sorted(candidatos):
+        if all(abs(x - outro) > tolerancia for outro in raizes):
+            raizes.append(x)
+        if len(raizes) >= 60:
+            break
+    return ("pontos", raizes) if raizes else ("sem_raizes", [])
+
+
+def raizes_nas_bordas_do_dominio(funcao, inicio, fim):
+    quantidade = min(5000, max(1400, int(240 * (fim - inicio))))
+    passo = (fim - inicio) / quantidade
+    xs = [inicio + i * passo for i in range(quantidade + 1)]
+    valores = [diferenca(funcao, (0.0, 0.0, 0.0), x) for x in xs]
+    candidatos = []
+
+    for i in range(1, len(xs)):
+        valido_anterior = valores[i - 1] is not None
+        valido_atual = valores[i] is not None
+        if valido_anterior == valido_atual:
+            continue
+        a, b = xs[i - 1], xs[i]
+        for _ in range(85):
+            meio = (a + b) / 2
+            if meio == a or meio == b:
+                break
+            valido_meio = diferenca(funcao, (0.0, 0.0, 0.0), meio) is not None
+            if valido_meio == valido_anterior:
+                a = meio
+            else:
+                b = meio
+        limite = a if valido_anterior else b
+        valor = diferenca(funcao, (0.0, 0.0, 0.0), limite)
+        if valor is not None and abs(valor) <= 5e-8:
+            candidatos.append(limite)
+    return candidatos
