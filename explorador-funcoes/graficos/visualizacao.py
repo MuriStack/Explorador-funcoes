@@ -2,12 +2,10 @@ import math
 
 import matplotlib.pyplot as plt
 
-from expressoes import Expressao
-from matematica import (
+from calculos.expressoes import Expressao
+from calculos.matematica import (
     avaliar_polinomio,
     calcular_intersecoes_polinomios,
-    descrever_raizes_polinomio,
-    descrever_comportamento,
     raizes_reais,
     vertice,
 )
@@ -19,21 +17,21 @@ def identificar(artista, categoria, nome=None):
 
 
 def desenhar_funcoes(
-    funcoes, inicio, fim, mostrar=False, tema_escuro=True,
+    funcoes, inicio, fim,
     intersecoes=None, par_intersecoes=("f", "g"), raizes=None, extremos=None,
 ):
     cores = {
-        "fundo": "#0b1220" if tema_escuro else "#ffffff",
-        "painel": "#111c2e" if tema_escuro else "#ffffff",
-        "texto": "#e8efff" if tema_escuro else "#202938",
-        "grade": "#334155" if tema_escuro else "#d8dee8",
-        "f": "#38bdf8" if tema_escuro else "#ef4444",
-        "g": "#f472b6" if tema_escuro else "#2563eb",
-        "h": "#fbbf24" if tema_escuro else "#d97706",
-        "i": "#a78bfa" if tema_escuro else "#7c3aed",
-        "j": "#2dd4bf" if tema_escuro else "#0d9488",
-        "intersecao": "#4ade80" if tema_escuro else "#16a34a",
-        "vertice": "#fbbf24" if tema_escuro else "#ca8a04",
+        "fundo": "#0b1220",
+        "painel": "#111c2e",
+        "texto": "#e8efff",
+        "grade": "#334155",
+        "f": "#38bdf8",
+        "g": "#f472b6",
+        "h": "#fbbf24",
+        "i": "#a78bfa",
+        "j": "#2dd4bf",
+        "intersecao": "#4ade80",
+        "vertice": "#fbbf24",
     }
 
     figura, eixo = plt.subplots(figsize=(9, 6))
@@ -162,34 +160,5 @@ def desenhar_funcoes(
     for texto in legenda.get_texts():
         texto.set_color(cores["texto"])
 
-    if not tema_escuro:
-        linhas = []
-        for nome, funcao in funcoes:
-            polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
-            if polinomio is None:
-                linhas.extend([f"{nome}(x): {funcao.texto}", ""])
-            else:
-                linhas.extend([
-                    f"{nome}(x): {descrever_comportamento(polinomio)}",
-                    f"Raízes: {descrever_raizes_polinomio(polinomio)}",
-                    "",
-                ])
-        eixo.text(0.02, 0.98, "\n".join(linhas).strip(),
-                  transform=eixo.transAxes, va="top",
-                  bbox=dict(boxstyle="round", facecolor="white", alpha=0.9))
-
     figura.tight_layout()
-    if mostrar:
-        plt.show()
     return figura
-
-
-def exibir_grafico(
-    af, bf, ag, bg, inicio, fim, intersecao,
-    mostrar=True, tema_escuro=False, exibir_g=True,
-):
-    funcoes = [("f", (0.0, af, bf))]
-    if exibir_g:
-        funcoes.append(("g", (0.0, ag, bg)))
-    return desenhar_funcoes(funcoes, inicio, fim,
-                           mostrar=mostrar, tema_escuro=tema_escuro)

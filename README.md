@@ -33,9 +33,7 @@ O programa permite inserir expressões como:
 ```text
 x^2 - 4*x + 3
 sin(x)
-cos(x) + 2
 sqrt(x)
-log(x)
 1/x
 ```
 
@@ -44,31 +42,32 @@ São suportadas operações aritméticas, funções trigonométricas, logaritmos
 Use `*` para multiplicações, como em `2*x`. As funções trigonométricas utilizam radianos.
 
 ## Tecnologias utilizadas
-- **Python** — linguagem principal.
-- **Tkinter** — interface gráfica.
-- **Matplotlib** — visualização e interação com gráficos.
-- **Git e GitHub** — controle de versões.
+
+Python, Tkinter, Matplotlib, Git e GitHub.
 
 ## Estrutura do projeto
+
+`calculos/` reúne a matemática; `graficos/`, a visualização; `gui/`, a interface. `interface.py` inicia a aplicação gráfica.
 
 ```text
 Explorador-funcoes/
 ├── README.md
 ├── .gitignore
-├── images/
-│   └── interface.png
+├── images/interface.png
 └── explorador-funcoes/
-    ├── explorador.py
     ├── interface.py
-    ├── matematica.py
-    ├── visualizacao.py
-    ├── expressoes.py
-    ├── intersecoes.py
-    ├── derivadas.py
-    ├── extremos.py
-    ├── integrais.py
-    ├── tabela_valores.py
-    └── cursor_precisao.py
+    ├── gui/
+    │   └── interface.py
+    ├── graficos/
+    │   └── visualizacao.py
+    └── calculos/
+        ├── matematica.py
+        ├── expressoes.py
+        ├── intersecoes.py
+        ├── derivadas.py
+        ├── extremos.py
+        ├── integrais.py
+        └── tabela_valores.py
 ```
 
 ## Instalação e execução
@@ -99,12 +98,6 @@ sudo apt install python3-tk
 ```bash
 cd explorador-funcoes
 python interface.py
-```
-
-A versão original de terminal também está disponível:
-
-```bash
-python explorador.py
 ```
 
 ## Limitações

@@ -1,7 +1,7 @@
 import math
 
-from expressoes import Expressao
-from matematica import avaliar_polinomio, vertice
+from .expressoes import Expressao
+from .matematica import avaliar_polinomio, vertice
 
 
 def avaliar(funcao, x):

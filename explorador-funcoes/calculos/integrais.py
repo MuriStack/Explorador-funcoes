@@ -1,7 +1,7 @@
 import math
 
-from expressoes import Expressao
-from matematica import avaliar_polinomio, raizes_reais
+from .expressoes import Expressao
+from .matematica import avaliar_polinomio, raizes_reais
 
 
 def avaliar_integrando(funcao, x):

@@ -1,7 +1,7 @@
 import math
 
-from expressoes import Expressao
-from matematica import avaliar_polinomio, calcular_intersecoes_polinomios
+from .expressoes import Expressao
+from .matematica import avaliar_polinomio, calcular_intersecoes_polinomios
 
 
 def avaliar(funcao, x):

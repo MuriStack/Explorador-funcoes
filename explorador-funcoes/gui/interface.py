@@ -5,10 +5,10 @@ from tkinter import filedialog, messagebox, ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
-from derivadas import calcular_tangente
-from extremos import encontrar_extremos
-from expressoes import Expressao
-from matematica import (
+from calculos.derivadas import calcular_tangente
+from calculos.extremos import encontrar_extremos
+from calculos.expressoes import Expressao
+from calculos.matematica import (
     criar_polinomio,
     descrever_comportamento,
     descrever_raizes_polinomio,
@@ -16,10 +16,10 @@ from matematica import (
     raizes_reais,
     vertice,
 )
-from intersecoes import encontrar_intersecoes, encontrar_raizes
-from integrais import avaliar_integrando, calcular_integral
-from tabela_valores import gerar_tabela
-from visualizacao import desenhar_funcoes
+from calculos.intersecoes import encontrar_intersecoes, encontrar_raizes
+from calculos.integrais import avaliar_integrando, calcular_integral
+from calculos.tabela_valores import gerar_tabela
+from graficos.visualizacao import desenhar_funcoes
 
 
 FUNDO = "#080f1e"
@@ -2034,7 +2034,7 @@ class ExploradorApp:
                 )
 
             nova_figura = desenhar_funcoes(
-                funcoes, inicio, fim, mostrar=False, tema_escuro=True,
+                funcoes, inicio, fim,
                 intersecoes=intersecoes, par_intersecoes=par,
                 raizes=raizes_por_funcao, extremos=extremos_por_funcao,
             )
@@ -2490,7 +2490,11 @@ class ExploradorApp:
         messagebox.showinfo("Gráfico salvo", "Imagem PNG exportada com sucesso.")
 
 
-if __name__ == "__main__":
+def main():
     janela = tk.Tk()
     app = ExploradorApp(janela)
     janela.mainloop()
+
+
+if __name__ == "__main__":
+    main()

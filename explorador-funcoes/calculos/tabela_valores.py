@@ -1,7 +1,7 @@
 import math
 
-from expressoes import Expressao
-from matematica import avaliar_polinomio
+from .expressoes import Expressao
+from .matematica import avaliar_polinomio
 
 
 MAX_LINHAS = 1001
