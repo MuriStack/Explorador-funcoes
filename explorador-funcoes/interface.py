@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 from derivadas import calcular_tangente
+from extremos import encontrar_extremos
 from expressoes import Expressao
 from matematica import (
     criar_polinomio,
@@ -738,7 +739,8 @@ class CursorPrecisao:
 class FocoPontosNotaveis:
     def __init__(
         self, canvas, funcoes, intersecoes, par, toolbar, cursor, status,
-        raizes=None, visibilidade_funcoes=None, visibilidade_elementos=None,
+        raizes=None, extremos=None, visibilidade_funcoes=None,
+        visibilidade_elementos=None,
     ):
         self.canvas = canvas
         self.eixo = canvas.figure.axes[0]
@@ -780,6 +782,13 @@ class FocoPontosNotaveis:
             for raiz in lista_raizes:
                 self.registrar(
                     f"Raiz de {nome}(x)", raiz, 0.0, cor, "raizes", nome,
+                )
+            for tipo, x, y in (extremos or {}).get(nome, []):
+                descricao = "Máximo local" if tipo == "maximo" else "Mínimo local"
+                cor_extremo = "#fb7185" if tipo == "maximo" else "#c084fc"
+                self.registrar(
+                    f"{descricao} de {nome}(x)", x, y,
+                    cor_extremo, "extremos", nome,
                 )
 
         self.marcador, = self.eixo.plot(
@@ -861,7 +870,13 @@ class FocoPontosNotaveis:
                 or (
                     candidato is not None
                     and abs(distancia - menor_distancia) <= 1e-6
-                    and ponto[4] == "tangente"
+                    and (
+                        ponto[4] == "tangente"
+                        or (
+                            ponto[4] == "extremos"
+                            and candidato[4] not in ("tangente", "extremos")
+                        )
+                    )
                 )
             ):
                 menor_distancia = distancia
@@ -908,7 +923,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.6")
+        self.janela.title("Explorador de Funções 3.7")
         self.janela.geometry("1360x840")
         self.janela.minsize(1050, 660)
         self.janela.configure(bg=FUNDO)
@@ -934,7 +949,10 @@ class ExploradorApp:
         self.intervalo_atual = (-5, 5)
         self.visibilidade_elementos = {
             nome: tk.BooleanVar(value=True)
-            for nome in ("curvas", "raizes", "vertices", "intersecoes", "grade", "legenda", "tangente")
+            for nome in (
+                "curvas", "raizes", "vertices", "extremos",
+                "intersecoes", "grade", "legenda", "tangente",
+            )
         }
         self.visibilidade_funcoes = {
             nome: tk.BooleanVar(value=True) for nome in "fghij"
@@ -1137,8 +1155,10 @@ class ExploradorApp:
             categoria, _, nome = identificador.partition(":")
             if categoria == "curva":
                 mostrar = visiveis["curvas"].get() and funcoes[nome].get()
-            elif categoria in ("raiz", "vertice"):
-                chave = "raizes" if categoria == "raiz" else "vertices"
+            elif categoria in ("raiz", "vertice", "extremo"):
+                chave = {
+                    "raiz": "raizes", "vertice": "vertices", "extremo": "extremos",
+                }[categoria]
                 mostrar = visiveis[chave].get() and funcoes[nome].get()
             elif categoria == "intersecao":
                 mostrar = (
@@ -1317,6 +1337,7 @@ class ExploradorApp:
             ("curvas", "Curvas"),
             ("raizes", "Raízes"),
             ("vertices", "Vértices"),
+            ("extremos", "Máx./mín."),
             ("intersecoes", "Interseções"),
             ("grade", "Grade"),
             ("legenda", "Legenda"),
@@ -1714,6 +1735,10 @@ class ExploradorApp:
                 nome: encontrar_raizes(funcao, inicio, fim)
                 for nome, funcao in funcoes
             }
+            extremos_por_funcao = {
+                nome: encontrar_extremos(funcao, inicio, fim)
+                for nome, funcao in funcoes
+            }
 
             par = (
                 self.primeira_intersecao.get(), self.segunda_intersecao.get(),
@@ -1730,7 +1755,7 @@ class ExploradorApp:
             nova_figura = desenhar_funcoes(
                 funcoes, inicio, fim, mostrar=False, tema_escuro=True,
                 intersecoes=intersecoes, par_intersecoes=par,
-                raizes=raizes_por_funcao,
+                raizes=raizes_por_funcao, extremos=extremos_por_funcao,
             )
 
         except (ValueError, OverflowError, ZeroDivisionError) as erro:
@@ -1759,6 +1784,23 @@ class ExploradorApp:
             descricoes.append(
                 f"INTERSEÇÕES {par[0]}/{par[1]}\n{texto_intersecao}"
             )
+        resumo_extremos = []
+        for nome, pontos in extremos_por_funcao.items():
+            for tipo, x, y in pontos[:10]:
+                titulo = "Máximo" if tipo == "maximo" else "Mínimo"
+                resumo_extremos.append(
+                    f"{titulo} de {nome}(x): ({x:.6f}, {y:.6f})"
+                )
+            if len(pontos) > 10:
+                resumo_extremos.append(
+                    f"{nome}(x): e mais {len(pontos) - 10} ponto(s)"
+                )
+        descricoes.append(
+            "MÁXIMOS E MÍNIMOS LOCAIS\n" + (
+                "\n".join(resumo_extremos)
+                if resumo_extremos else "Nenhum extremo local encontrado no intervalo"
+            )
+        )
         self.resultado.set("\n\n".join(descricoes))
 
         if self.foco_pontos is not None:
@@ -1803,6 +1845,7 @@ class ExploradorApp:
         self.foco_pontos = FocoPontosNotaveis(
             self.canvas, funcoes, intersecoes, par, self.toolbar,
             self.cursor_precisao, self.status, raizes=raizes_por_funcao,
+            extremos=extremos_por_funcao,
             visibilidade_funcoes=self.visibilidade_funcoes,
             visibilidade_elementos=self.visibilidade_elementos,
         )

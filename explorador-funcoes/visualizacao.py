@@ -20,7 +20,7 @@ def identificar(artista, categoria, nome=None):
 
 def desenhar_funcoes(
     funcoes, inicio, fim, mostrar=False, tema_escuro=True,
-    intersecoes=None, par_intersecoes=("f", "g"), raizes=None,
+    intersecoes=None, par_intersecoes=("f", "g"), raizes=None, extremos=None,
 ):
     cores = {
         "fundo": "#0b1220" if tema_escuro else "#ffffff",
@@ -87,6 +87,27 @@ def desenhar_funcoes(
                     xytext=(10, -22), textcoords="offset points",
                     color=cores["vertice"], fontsize=9,
                 ), "vertice", nome)
+
+    if extremos:
+        for nome, _ in funcoes:
+            pontos = extremos.get(nome, [])
+            for indice, (tipo, x, y) in enumerate(pontos):
+                cor = "#fb7185" if tipo == "maximo" else "#c084fc"
+                titulo = "Máximo" if tipo == "maximo" else "Mínimo"
+                marcador = "^" if tipo == "maximo" else "v"
+                identificar(eixo.scatter(
+                    x, y, color=cor, marker=marcador, s=125,
+                    edgecolor=cores["painel"], linewidth=1.3, zorder=9,
+                    label=f"{titulo} de {nome}(x)" if indice == 0 or not any(
+                        anterior[0] == tipo for anterior in pontos[:indice]
+                    ) else None,
+                ), "extremo", nome)
+                if len(pontos) <= 3:
+                    identificar(eixo.annotate(
+                        f"{titulo}: ({x:.3f}, {y:.3f})", (x, y),
+                        xytext=(9, 19), textcoords="offset points",
+                        color=cor, fontsize=9,
+                    ), "extremo", nome)
 
     if intersecoes is None and len(funcoes) >= 2:
         polinomios = [

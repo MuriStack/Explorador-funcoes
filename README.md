@@ -15,7 +15,7 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 - Visualização de até **cinco funções** simultaneamente.
 - Suporte a funções **afins, quadráticas e expressões matemáticas**.
 - Adição e remoção de funções, com **sliders para coeficientes, intervalo e tangente**.
-- Cálculo de raízes, vértices, discriminante e interseções.
+- Cálculo de raízes, vértices, **máximos e mínimos locais**, discriminante e interseções.
 - **Raízes numéricas de expressões não polinomiais**, destacadas no gráfico.
 - Interseções numéricas entre diferentes tipos de funções.
 - Cursor de precisão com **seis casas decimais**.
@@ -43,7 +43,6 @@ São suportadas operações aritméticas, funções trigonométricas, logaritmos
 Use `*` para multiplicações, como em `2*x`. As funções trigonométricas utilizam radianos.
 
 ## Tecnologias utilizadas
-
 - **Python** — linguagem principal.
 - **Tkinter** — interface gráfica.
 - **Matplotlib** — visualização e interação com gráficos.
@@ -65,6 +64,7 @@ Explorador-funcoes/
     ├── expressoes.py
     ├── intersecoes.py
     ├── derivadas.py
+    ├── extremos.py
     └── cursor_precisao.py
 ```
 
@@ -107,7 +107,7 @@ python explorador.py
 ## Limitações
 
 - A análise **algébrica** de raízes e vértices é limitada a polinômios de grau até dois.
-- Derivadas de expressões, raízes e interseções numéricas são aproximadas e podem não ser determinadas em alguns pontos.
+- Derivadas, raízes, interseções e extremos numéricos são aproximados e podem não ser identificados em todos os casos.
 - As buscas numéricas consideram o intervalo configurado.
 
 ## Autor
