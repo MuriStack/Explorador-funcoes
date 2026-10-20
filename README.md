@@ -4,9 +4,9 @@ Aplicação em **Python** para analisar, comparar e exportar gráficos matemáti
 
 ## Sobre o projeto
 
-O Explorador de Funções permite analisar **uma função isoladamente** ou **comparar duas funções**, inserindo coeficientes ou expressões matemáticas diretamente.
+O Explorador de Funções permite analisar **uma função isoladamente** ou **comparar até cinco funções**, inserindo coeficientes ou expressões matemáticas diretamente.
 
-A versão **2.5** acrescenta a opção **Expressão**, que permite escrever funções como `x^2 - 4*x + 3`, `sin(x)`, `log(x)` e `1/x`. Os modos anteriores, a exportação de PNG e o tema escuro com bordas arredondadas permanecem disponíveis.
+A versão **2.5** acrescentou a opção **Expressão**, que permite escrever funções como `x^2 - 4*x + 3`, `sin(x)`, `log(x)` e `1/x`. A versão **2.6** permite adicionar e remover curvas no mesmo gráfico, até cinco funções simultâneas (`f`, `g`, `h`, `i` e `j`), mantendo a exportação PNG e o tema escuro com bordas arredondadas.
 
 ## Demonstração
 
@@ -14,14 +14,16 @@ A versão **2.5** acrescenta a opção **Expressão**, que permite escrever fun�
 
 ## Funcionalidades
 
-- Alternância entre os modos **1 função** e **2 funções**.
-- Seleção independente de **Afim**, **Quadrática** ou **Expressão** para `f(x)` e `g(x)`, com a opção de expressão em uma linha própria para facilitar o uso.
+- Visualização de **1 a 5 funções** no mesmo plano cartesiano, usando **+ ADICIONAR** e **− REMOVER**.
+- **Barra de rolagem lateral minimalista**, estreita, sem setas e com indicador arredondado. Suporta arrastar, clicar na trilha e usar a roda do mouse sobre os controles.
+- Atalhos **1 função** e **2 funções** para alternar rapidamente entre as quantidades mais comuns.
+- Seleção independente de **Afim**, **Quadrática** ou **Expressão** para cada função ativa, de `f(x)` até `j(x)`, com a opção de expressão em uma linha própria para facilitar o uso.
 - Campos adaptados para digitar coeficientes ou escrever a expressão diretamente.
 - Gráficos interativos com zoom e movimentação.
 - Destaque de raízes, vértices e interseções visíveis no intervalo.
 - Cálculo do discriminante **Δ** e do vértice para funções quadráticas, inclusive expressões polinomiais reconhecidas.
 - Classificação de funções afins e indicação da concavidade de parábolas.
-- Identificação de até duas interseções reais ou de curvas coincidentes quando ambas são polinômios de grau até 2.
+- Cálculo de até duas interseções reais **entre f(x) e g(x)** quando ambas são polinômios de grau até 2. As demais funções têm gráficos, raízes e vértices próprios quando aplicáveis.
 - Configuração do intervalo e atualização do gráfico sem reiniciar a aplicação.
 - Exportação do gráfico atual como **imagem PNG** pela interface.
 - Validação de entradas, com mensagens de erro.
@@ -80,7 +82,7 @@ cd explorador-funcoes
 python interface.py
 ```
 
-Selecione **1 função** ou **2 funções**. Em cada função, escolha **Afim**, **Quadrática** ou **Expressão**. Na opção Expressão, digite uma fórmula usando `x` e clique em **GERAR GRÁFICO**.
+Use **+ ADICIONAR** e **− REMOVER** para trabalhar com 1 a 5 funções (ou os atalhos **1 função** e **2 funções**). Para cada função ativa, escolha **Afim**, **Quadrática** ou **Expressão** e clique em **GERAR GRÁFICO**. Role o painel lateral com a **barra vertical ou a roda do mouse** para acessar as demais funções, os botões e a análise. O aplicativo conserva os campos das funções ocultas caso você volte a adicioná-las durante a mesma sessão.
 
 ### 4. Exporte um gráfico
 
@@ -118,15 +120,20 @@ As expressões são validadas antes da execução; trechos que não sejam opera�
 ## Organização do código
 
 - **`matematica.py`** — cálculo de raízes, discriminante, vértice e interseções.
-- **`visualizacao.py`** — desenho de retas, parábolas e pontos notáveis.
-- **`interface.py`** — interface, entrada por coeficientes ou expressão e exportação de PNG.
+- **`visualizacao.py`** — desenho simultâneo de até cinco funções, com cores distintas e pontos notáveis.
+- **`interface.py`** — gerenciamento de 1 a 5 funções, entrada por coeficientes ou expressão e exportação PNG.
 - **`expressoes.py`** — interpretação segura e avaliação das expressões digitadas.
 - **`explorador.py`** — versão original no terminal.
 
+## Limitações atuais
+
+- O cálculo automático de interseções considera **f(x) e g(x)**, quando são polinômios de grau até 2; pares adicionais ainda não possuem interseção calculada.
+- Expressões não polinomiais são desenhadas, mas ainda não possuem análise automática de raízes, vértices ou interseções.
+
 ## Próximos passos
 
+- Permitir selecionar pares de funções para calcular interseções.
 - Ampliar a análise numérica de funções não polinomiais.
-- Melhorar os recursos de navegação e personalização do gráfico.
 
 ## Autor
 
