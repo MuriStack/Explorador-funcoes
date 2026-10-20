@@ -1,6 +1,6 @@
 import math
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -17,6 +17,7 @@ from matematica import (
     vertice,
 )
 from intersecoes import encontrar_intersecoes, encontrar_raizes
+from tabela_valores import gerar_tabela
 from visualizacao import desenhar_funcoes
 
 
@@ -618,6 +619,114 @@ class BarraRolagemMinimalista(tk.Canvas):
         self.redesenhar()
 
 
+class BarraRolagemTabela(tk.Canvas):
+    def __init__(self, parent, orientacao, comando):
+        if orientacao not in ("vertical", "horizontal"):
+            raise ValueError("Orientação de rolagem inválida.")
+        super().__init__(
+            parent, bg=PAINEL, width=13, height=13,
+            bd=0, highlightthickness=0, cursor="hand2",
+        )
+        self.orientacao = orientacao
+        self.comando = comando
+        self.inicio = 0.0
+        self.fim = 1.0
+        self.deslocamento = None
+        self.sobre = False
+        self.bind("<Configure>", self.redesenhar)
+        self.bind("<Button-1>", self.clicar)
+        self.bind("<B1-Motion>", self.arrastar)
+        self.bind("<ButtonRelease-1>", self.soltar)
+        self.bind("<Enter>", self.entrar)
+        self.bind("<Leave>", self.sair)
+
+    def set(self, inicio, fim):
+        self.inicio = max(0.0, min(1.0, float(inicio)))
+        self.fim = max(self.inicio, min(1.0, float(fim)))
+        self.redesenhar()
+
+    def medidas(self):
+        comprimento = (
+            self.winfo_height() if self.orientacao == "vertical"
+            else self.winfo_width()
+        )
+        disponivel = max(1.0, comprimento - 10)
+        proporcao = self.fim - self.inicio
+        tamanho = min(disponivel, max(38.0, disponivel * proporcao))
+        percurso = max(0.0, disponivel - tamanho)
+        topo = 5 + percurso * self.inicio / max(0.000001, 1 - proporcao)
+        return topo, topo + tamanho, percurso
+
+    def redesenhar(self, _evento=None):
+        self.delete("all")
+        largura = self.winfo_width()
+        altura = self.winfo_height()
+        if largura < 8 or altura < 8:
+            return
+        if self.orientacao == "vertical":
+            cx = largura / 2
+            trilho = (cx - 2, 5, cx + 2, altura - 5)
+        else:
+            cy = altura / 2
+            trilho = (5, cy - 2, largura - 5, cy + 2)
+        self.create_polygon(
+            *pontos_arredondados(*trilho, 2),
+            fill="#24364e", outline="",
+        )
+        if self.fim - self.inicio >= 0.99999:
+            return
+        topo, base, _ = self.medidas()
+        if self.orientacao == "vertical":
+            indicador = (cx - 4, topo, cx + 4, base)
+        else:
+            indicador = (topo, cy - 4, base, cy + 4)
+        self.create_polygon(
+            *pontos_arredondados(*indicador, 4),
+            fill="#93b4d1" if self.sobre or self.deslocamento is not None else "#6586a6",
+            outline="", tags="indicador",
+        )
+
+    def coordenada(self, evento):
+        return evento.y if self.orientacao == "vertical" else evento.x
+
+    def clicar(self, evento):
+        if self.fim - self.inicio >= 0.99999:
+            return
+        posicao = self.coordenada(evento)
+        topo, base, _ = self.medidas()
+        if topo <= posicao <= base:
+            self.deslocamento = posicao - topo
+        else:
+            self.deslocamento = (base - topo) / 2
+            self.mover(posicao)
+        self.redesenhar()
+
+    def mover(self, posicao):
+        if self.deslocamento is None:
+            return
+        _, _, percurso = self.medidas()
+        if percurso <= 0:
+            return
+        fracao = max(0.0, min(1.0, (posicao - self.deslocamento - 5) / percurso))
+        proporcao = self.fim - self.inicio
+        self.comando("moveto", fracao * (1 - proporcao))
+
+    def arrastar(self, evento):
+        self.mover(self.coordenada(evento))
+
+    def soltar(self, _evento):
+        self.deslocamento = None
+        self.redesenhar()
+
+    def entrar(self, _evento):
+        self.sobre = True
+        self.redesenhar()
+
+    def sair(self, _evento):
+        self.sobre = False
+        self.redesenhar()
+
+
 class CursorPrecisao:
     def __init__(self, canvas, funcoes, toolbar, status, visibilidade_funcoes, visibilidade_elementos):
         self.canvas = canvas
@@ -923,7 +1032,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.7")
+        self.janela.title("Explorador de Funções 3.8")
         self.janela.geometry("1360x840")
         self.janela.minsize(1050, 660)
         self.janela.configure(bg=FUNDO)
@@ -934,6 +1043,9 @@ class ExploradorApp:
         self.toolbar = None
         self.cursor_precisao = None
         self.foco_pontos = None
+        self.janela_tabela = None
+        self.arvore_tabela = None
+        self.resumo_tabela = None
         self.campos = {}
         self.sliders = {}
         self.atualizacao_pendente = None
@@ -1399,6 +1511,32 @@ class ExploradorApp:
             font=("DejaVu Sans", 9), wraplength=260,
         ).pack(anchor="w", fill="x", pady=(3, 0))
 
+        grupo_tabela = tk.Frame(self.pagina_analises, bg=PAINEL)
+        grupo_tabela.pack(fill="x", pady=(17, 12))
+        self.texto(
+            grupo_tabela, "TABELA DE VALORES", 9, SUAVE, True,
+        ).pack(anchor="w", pady=(0, 6))
+        self.texto(
+            grupo_tabela, "Compare os valores das funções no intervalo atual.",
+            9, SUAVE,
+        ).pack(anchor="w", pady=(0, 7))
+        linha_tabela = tk.Frame(grupo_tabela, bg=PAINEL)
+        linha_tabela.pack(fill="x")
+        coluna_passo = tk.Frame(linha_tabela, bg=PAINEL, width=105)
+        coluna_passo.pack(side="left", padx=(0, 9))
+        self.texto(coluna_passo, "Passo de x", 9, SUAVE).pack(
+            anchor="w", pady=(0, 4)
+        )
+        self.campo_passo_tabela = CampoArredondado(coluna_passo, "1")
+        self.campo_passo_tabela.configure(width=100)
+        self.campo_passo_tabela.pack()
+        self.campo_passo_tabela.bind_enter(self.abrir_tabela_valores)
+        botao_tabela = BotaoArredondado(
+            linha_tabela, "VER TABELA", self.abrir_tabela_valores, contorno=True
+        )
+        botao_tabela.configure(width=180, height=39)
+        botao_tabela.pack(side="left", fill="x", expand=True, pady=(18, 0))
+
         self.grupos_funcoes = {}
         for nome, valores in (
             ("f", ("2", "1", "0")),
@@ -1854,6 +1992,148 @@ class ExploradorApp:
             self.tracar_tangente(silencioso=True)
         else:
             self.aplicar_visibilidade()
+        self.atualizar_tabela_aberta()
+
+    def dados_tabela(self):
+        try:
+            passo = float(self.campo_passo_tabela.get().replace(",", "."))
+        except ValueError as erro:
+            raise ValueError("Digite um passo numérico válido.") from erro
+        funcoes = [(nome, self.funcoes_atuais[nome]) for nome in self.nomes_ativos]
+        return funcoes, gerar_tabela(funcoes, *self.intervalo_atual, passo)
+
+    @staticmethod
+    def formatar_celula_tabela(valor):
+        if valor is None:
+            return "—"
+        return f"{valor:.6f}"
+
+    def atualizar_tabela_aberta(self):
+        if self.janela_tabela is None or not self.janela_tabela.winfo_exists():
+            return
+        try:
+            funcoes, linhas = self.dados_tabela()
+        except ValueError as erro:
+            self.resumo_tabela.set(str(erro))
+            return
+        colunas = ("x", *(f"{nome}(x)" for nome, _ in funcoes))
+        self.arvore_tabela.configure(columns=colunas)
+        for coluna in colunas:
+            self.arvore_tabela.heading(coluna, text=coluna)
+            self.arvore_tabela.column(
+                coluna, width=155, minwidth=110, stretch=True, anchor="center",
+            )
+        anteriores = self.arvore_tabela.get_children()
+        if anteriores:
+            self.arvore_tabela.delete(*anteriores)
+        for indice, linha in enumerate(linhas):
+            self.arvore_tabela.insert(
+                "", "end", values=tuple(map(self.formatar_celula_tabela, linha)),
+                tags=("par" if indice % 2 == 0 else "impar",),
+            )
+        inicio, fim = self.intervalo_atual
+        self.resumo_tabela.set(
+            f"{len(linhas)} linhas  •  Intervalo [{inicio}, {fim}]"
+            "  •  — indica um valor indefinido"
+        )
+        self.janela_tabela.title("Explorador de Funções — Tabela de valores")
+
+    def rolar_tabela(self, evento, horizontal=False):
+        if self.arvore_tabela is None or not self.arvore_tabela.winfo_exists():
+            return "break"
+        if getattr(evento, "num", None) in (4, 5):
+            direcao = -1 if evento.num == 4 else 1
+            passos = 3
+        else:
+            delta = getattr(evento, "delta", 0)
+            if not delta:
+                return "break"
+            direcao = -1 if delta > 0 else 1
+            passos = max(1, min(10, round(abs(delta) / 120)))
+        comando = self.arvore_tabela.xview_scroll if horizontal else self.arvore_tabela.yview_scroll
+        comando(direcao * passos, "units")
+        return "break"
+
+    def abrir_tabela_valores(self):
+        try:
+            self.dados_tabela()
+        except ValueError as erro:
+            messagebox.showerror("Tabela de valores", str(erro), parent=self.janela)
+            return
+
+        if self.janela_tabela is not None and self.janela_tabela.winfo_exists():
+            self.atualizar_tabela_aberta()
+            self.janela_tabela.lift()
+            self.janela_tabela.focus_set()
+            return
+
+        janela = tk.Toplevel(self.janela)
+        janela.configure(bg=FUNDO)
+        janela.geometry("880x550")
+        janela.minsize(540, 350)
+        janela.transient(self.janela)
+        self.janela_tabela = janela
+        corpo = tk.Frame(janela, bg=FUNDO, padx=22, pady=20)
+        corpo.pack(fill="both", expand=True)
+        self.texto(corpo, "TABELA DE VALORES", 16, TEXTO, True).pack(anchor="w")
+        self.texto(
+            corpo, "Valores de x e das funções presentes no gráfico.", 10, SUAVE,
+        ).pack(anchor="w", pady=(5, 13))
+
+        estilo = ttk.Style(janela)
+        estilo.configure(
+            "ExploradorTabela.Treeview", background=CAMPO,
+            fieldbackground=CAMPO, foreground=TEXTO, rowheight=30,
+            borderwidth=0, relief="flat", font=("DejaVu Sans", 10),
+        )
+        estilo.configure(
+            "ExploradorTabela.Treeview.Heading", background=PAINEL,
+            foreground=DESTAQUE, relief="flat", padding=(9, 9),
+            font=("DejaVu Sans", 10, "bold"),
+        )
+        estilo.map(
+            "ExploradorTabela.Treeview",
+            background=[("selected", "#274763")],
+            foreground=[("selected", TEXTO)],
+        )
+        tabela_container = tk.Frame(corpo, bg=PAINEL)
+        tabela_container.pack(fill="both", expand=True)
+        arvore = ttk.Treeview(
+            tabela_container, show="headings", selectmode="browse",
+            style="ExploradorTabela.Treeview",
+        )
+        arvore.tag_configure("par", background=CAMPO, foreground=TEXTO)
+        arvore.tag_configure("impar", background=PAINEL, foreground=TEXTO)
+        barra_y = BarraRolagemTabela(tabela_container, "vertical", arvore.yview)
+        barra_x = BarraRolagemTabela(tabela_container, "horizontal", arvore.xview)
+        arvore.configure(yscrollcommand=barra_y.set, xscrollcommand=barra_x.set)
+        tabela_container.rowconfigure(0, weight=1)
+        tabela_container.columnconfigure(0, weight=1)
+        tabela_container.configure(bg=PAINEL)
+        arvore.grid(row=0, column=0, sticky="nsew")
+        barra_y.grid(row=0, column=1, sticky="ns")
+        barra_x.grid(row=1, column=0, sticky="ew")
+        canto = tk.Frame(tabela_container, bg=PAINEL, width=13, height=13)
+        canto.grid(row=1, column=1, sticky="nsew")
+        arvore.bind("<MouseWheel>", self.rolar_tabela)
+        arvore.bind("<Button-4>", self.rolar_tabela)
+        arvore.bind("<Button-5>", self.rolar_tabela)
+        arvore.bind("<Shift-MouseWheel>", lambda evento: self.rolar_tabela(evento, True))
+        arvore.bind("<Shift-Button-4>", lambda evento: self.rolar_tabela(evento, True))
+        arvore.bind("<Shift-Button-5>", lambda evento: self.rolar_tabela(evento, True))
+        for barra in (barra_y, barra_x):
+            horizontal = barra.orientacao == "horizontal"
+            barra.bind("<MouseWheel>", lambda evento, h=horizontal: self.rolar_tabela(evento, h))
+            barra.bind("<Button-4>", lambda evento, h=horizontal: self.rolar_tabela(evento, h))
+            barra.bind("<Button-5>", lambda evento, h=horizontal: self.rolar_tabela(evento, h))
+        self.arvore_tabela = arvore
+        self.resumo_tabela = tk.StringVar()
+        tk.Label(
+            corpo, textvariable=self.resumo_tabela,
+            bg=FUNDO, fg=SUAVE, font=("DejaVu Sans", 9),
+        ).pack(anchor="w", pady=(12, 0))
+        janela.protocol("WM_DELETE_WINDOW", janela.destroy)
+        self.atualizar_tabela_aberta()
 
     def remover_tangente(self):
         for artista in self.tangente_artistas:

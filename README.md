@@ -16,8 +16,8 @@ O **Explorador de Funções** é uma ferramenta educacional que integra programa
 - Suporte a funções **afins, quadráticas e expressões matemáticas**.
 - Adição e remoção de funções, com **sliders para coeficientes, intervalo e tangente**.
 - Cálculo de raízes, vértices, **máximos e mínimos locais**, discriminante e interseções.
-- **Raízes numéricas de expressões não polinomiais**, destacadas no gráfico.
-- Interseções numéricas entre diferentes tipos de funções.
+- **Raízes e interseções numéricas** entre expressões matemáticas.
+- **Tabela de valores** das funções ativas, com passo configurável e rolagem minimalista.
 - Cursor de precisão com **seis casas decimais**.
 - Zoom inteligente em pontos notáveis, incluindo raízes numéricas.
 - Navegação interativa com zoom e movimentação.
@@ -65,6 +65,7 @@ Explorador-funcoes/
     ├── intersecoes.py
     ├── derivadas.py
     ├── extremos.py
+    ├── tabela_valores.py
     └── cursor_precisao.py
 ```
 
@@ -108,11 +109,10 @@ python explorador.py
 
 - A análise **algébrica** de raízes e vértices é limitada a polinômios de grau até dois.
 - Derivadas, raízes, interseções e extremos numéricos são aproximados e podem não ser identificados em todos os casos.
-- As buscas numéricas consideram o intervalo configurado.
+- As buscas numéricas e a tabela usam o intervalo configurado; a tabela aceita até 1.001 linhas.
 
 ## Autor
-Desenvolvido por [MuriStack](https://github.com/MuriStack).
 
----
+Desenvolvido por [MuriStack](https://github.com/MuriStack).
 
 Projeto educacional que integra programação, matemática e visualização gráfica.
