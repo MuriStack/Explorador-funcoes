@@ -47,7 +47,7 @@ Python, Tkinter, Matplotlib, Git e GitHub.
 
 ## Estrutura do projeto
 
-`calculos/` reúne a matemática; `graficos/`, a visualização; `gui/`, a interface. `interface.py` inicia a aplicação gráfica.
+`calculos/` reúne a matemática; `graficos/`, a visualização; `gui/`, a interface. `main.py` inicia a aplicação gráfica. Os arquivos `__init__.py` identificam os pacotes Python.
 
 ```text
 Explorador-funcoes/
@@ -55,12 +55,15 @@ Explorador-funcoes/
 ├── .gitignore
 ├── images/interface.png
 └── explorador-funcoes/
-    ├── interface.py
+    ├── main.py
     ├── gui/
+    │   ├── __init__.py
     │   └── interface.py
     ├── graficos/
+    │   ├── __init__.py
     │   └── visualizacao.py
     └── calculos/
+        ├── __init__.py
         ├── matematica.py
         ├── expressoes.py
         ├── intersecoes.py
@@ -97,7 +100,7 @@ sudo apt install python3-tk
 
 ```bash
 cd explorador-funcoes
-python interface.py
+python main.py
 ```
 
 ## Limitações
