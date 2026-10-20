@@ -1,13 +1,12 @@
 import math
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 from expressoes import Expressao
 from matematica import (
-    calcular_intersecoes_polinomios,
     criar_polinomio,
     descrever_comportamento,
     descrever_raizes_polinomio,
@@ -15,6 +14,7 @@ from matematica import (
     raizes_reais,
     vertice,
 )
+from intersecoes import encontrar_intersecoes
 from visualizacao import desenhar_funcoes
 
 
@@ -447,7 +447,7 @@ class CursorPrecisao:
 
 
 class FocoPontosNotaveis:
-    def __init__(self, canvas, funcoes, intersecoes, toolbar, cursor, status):
+    def __init__(self, canvas, funcoes, intersecoes, par, toolbar, cursor, status):
         self.canvas = canvas
         self.eixo = canvas.figure.axes[0]
         self.toolbar = toolbar
@@ -463,7 +463,7 @@ class FocoPontosNotaveis:
 
         if intersecoes is not None and intersecoes[0] == "pontos":
             for x, y in intersecoes[1]:
-                self.registrar("Interseção f/g", x, y, "#4ade80")
+                self.registrar(f"Interseção {par[0]}/{par[1]}", x, y, "#4ade80")
 
         for nome, funcao in funcoes:
             polinomio = funcao.polinomio if isinstance(funcao, Expressao) else funcao
@@ -564,7 +564,7 @@ class FocoPontosNotaveis:
 class ExploradorApp:
     def __init__(self, janela):
         self.janela = janela
-        self.janela.title("Explorador de Funções 3.0")
+        self.janela.title("Explorador de Funções 3.1")
         self.janela.geometry("1300x820")
         self.janela.minsize(1000, 670)
         self.janela.configure(bg=FUNDO)
@@ -577,6 +577,8 @@ class ExploradorApp:
         self.foco_pontos = None
         self.campos = {}
         self.quantidade_funcoes = 2
+        self.primeira_intersecao = tk.StringVar(value="f")
+        self.segunda_intersecao = tk.StringVar(value="g")
         self.tipos = {nome: "Afim" for nome in "fghij"}
         self.botoes_tipo = {}
         self.rotulos = {}
@@ -749,6 +751,49 @@ class ExploradorApp:
         self.indicador_funcoes = self.texto(interno, "2 de 5 funções", 9, SUAVE)
         self.indicador_funcoes.pack(anchor="w", pady=(2, 0))
 
+        self.grupo_selecao_intersecoes = tk.Frame(interno, bg=PAINEL)
+        self.grupo_selecao_intersecoes.pack(fill="x", pady=(13, 0))
+        self.texto(
+            self.grupo_selecao_intersecoes, "INTERSEÇÕES ENTRE FUNÇÕES",
+            9, SUAVE, True,
+        ).pack(anchor="w", pady=(0, 6))
+        linha_seletores = tk.Frame(self.grupo_selecao_intersecoes, bg=PAINEL)
+        linha_seletores.pack(fill="x")
+        estilo = ttk.Style(self.janela)
+        estilo.configure(
+            "Intersecoes.TCombobox", fieldbackground=CAMPO,
+            background=CAMPO, foreground=TEXTO, arrowcolor=SUAVE,
+            bordercolor=BORDA, lightcolor=BORDA, darkcolor=BORDA,
+            padding=6,
+        )
+        estilo.map(
+            "Intersecoes.TCombobox",
+            fieldbackground=[("readonly", CAMPO)],
+            foreground=[("readonly", TEXTO)],
+            selectbackground=[("readonly", CAMPO)],
+            selectforeground=[("readonly", TEXTO)],
+        )
+        self.seletores_intersecoes = []
+        for indice, variavel in enumerate((
+            self.primeira_intersecao, self.segunda_intersecao,
+        )):
+            coluna = tk.Frame(linha_seletores, bg=PAINEL)
+            coluna.pack(
+                side="left", fill="x", expand=True,
+                padx=(0, 5) if indice == 0 else (5, 0),
+            )
+            self.texto(
+                coluna, "Primeira" if indice == 0 else "Segunda", 9, SUAVE,
+            ).pack(anchor="w", pady=(0, 4))
+            seletor = ttk.Combobox(
+                coluna, textvariable=variavel, values=("f", "g"),
+                state="readonly", width=6, style="Intersecoes.TCombobox",
+                font=("DejaVu Sans", 10),
+            )
+            seletor.pack(fill="x")
+            seletor.bind("<<ComboboxSelected>>", self.alterar_par_intersecoes)
+            self.seletores_intersecoes.append(seletor)
+
         self.grupos_funcoes = {}
         for nome, valores in (
             ("f", ("2", "1", "0")),
@@ -896,6 +941,32 @@ class ExploradorApp:
         self.botao_uma.definir_selecionado(quantidade == 1)
         self.botao_duas.definir_selecionado(quantidade == 2)
         self.indicador_funcoes.configure(text=f"{quantidade} de 5 funções")
+        self.atualizar_seletores_intersecoes()
+        self.gerar_grafico()
+
+    def atualizar_seletores_intersecoes(self):
+        nomes = tuple(self.nomes_ativos)
+        for seletor in self.seletores_intersecoes:
+            seletor.configure(
+                values=nomes, state="readonly" if len(nomes) >= 2 else "disabled",
+            )
+        if len(nomes) < 2:
+            return
+        if self.primeira_intersecao.get() not in nomes:
+            self.primeira_intersecao.set(nomes[0])
+        if self.segunda_intersecao.get() not in nomes:
+            self.segunda_intersecao.set(nomes[1])
+        if self.primeira_intersecao.get() == self.segunda_intersecao.get():
+            self.segunda_intersecao.set(
+                next(n for n in nomes if n != self.primeira_intersecao.get())
+            )
+
+    def alterar_par_intersecoes(self, _evento):
+        if self.primeira_intersecao.get() == self.segunda_intersecao.get():
+            opcoes = tuple(self.nomes_ativos)
+            self.segunda_intersecao.set(
+                next(n for n in opcoes if n != self.primeira_intersecao.get())
+            )
         self.gerar_grafico()
 
     def alterar_modo(self, modo):
@@ -1007,23 +1078,21 @@ class ExploradorApp:
                     if valor is not None and not math.isfinite(valor):
                         raise ValueError("Os coeficientes geraram números muito grandes.")
 
+            par = (
+                self.primeira_intersecao.get(), self.segunda_intersecao.get(),
+            )
             intersecoes = None
-            polinomios = [
-                funcao.polinomio if isinstance(funcao, Expressao) else funcao
-                for _, funcao in funcoes
-            ]
-            if len(funcoes) >= 2 and all(p is not None for p in polinomios[:2]):
-                intersecoes = calcular_intersecoes_polinomios(
-                    polinomios[0], polinomios[1]
+            if len(funcoes) >= 2:
+                disponiveis = dict(funcoes)
+                if par[0] not in disponiveis or par[1] not in disponiveis:
+                    raise ValueError("Selecione duas funções disponíveis.")
+                intersecoes = encontrar_intersecoes(
+                    disponiveis[par[0]], disponiveis[par[1]], inicio, fim,
                 )
-                if not all(
-                    math.isfinite(valor)
-                    for ponto in intersecoes[1] for valor in ponto
-                ):
-                    raise ValueError("A interseção gerou números muito grandes.")
 
             nova_figura = desenhar_funcoes(
-                funcoes, inicio, fim, mostrar=False, tema_escuro=True
+                funcoes, inicio, fim, mostrar=False, tema_escuro=True,
+                intersecoes=intersecoes, par_intersecoes=par,
             )
 
         except (ValueError, OverflowError, ZeroDivisionError) as erro:
@@ -1037,19 +1106,17 @@ class ExploradorApp:
         if intersecoes is not None:
             situacao, pontos = intersecoes
             if situacao == "coincidentes":
-                texto_intersecao = "Curvas coincidentes"
+                texto_intersecao = "Curvas coincidentes no intervalo analisado"
             elif situacao == "sem_intersecao":
-                texto_intersecao = "Sem interseção real"
+                texto_intersecao = "Nenhuma interseção encontrada no intervalo"
             else:
                 texto_intersecao = "\n".join(
-                    f"({self.formatar_numero(x)}, {self.formatar_numero(y)})"
-                    + (" · fora do intervalo" if not inicio <= x <= fim else "")
-                    for x, y in pontos
+                    f"({x:.6f}, {y:.6f})" for x, y in pontos[:12]
                 )
-            descricoes.append(f"INTERSEÇÕES f/g\n{texto_intersecao}")
-        if len(funcoes) >= 2 and intersecoes is None:
+                if len(pontos) > 12:
+                    texto_intersecao += f"\n... e mais {len(pontos) - 12} ponto(s)"
             descricoes.append(
-                "INTERSEÇÕES f/g\nCálculo disponível para polinômios de grau até 2."
+                f"INTERSEÇÕES {par[0]}/{par[1]}\n{texto_intersecao}"
             )
         self.resultado.set("\n\n".join(descricoes))
 
@@ -1089,7 +1156,7 @@ class ExploradorApp:
             self.canvas, funcoes, self.toolbar, self.status
         )
         self.foco_pontos = FocoPontosNotaveis(
-            self.canvas, funcoes, intersecoes, self.toolbar,
+            self.canvas, funcoes, intersecoes, par, self.toolbar,
             self.cursor_precisao, self.status,
         )
         self.cursor_precisao.foco = self.foco_pontos

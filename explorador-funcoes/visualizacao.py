@@ -13,7 +13,10 @@ from matematica import (
 )
 
 
-def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
+def desenhar_funcoes(
+    funcoes, inicio, fim, mostrar=False, tema_escuro=True,
+    intersecoes=None, par_intersecoes=("f", "g"),
+):
     cores = {
         "fundo": "#0b1220" if tema_escuro else "#ffffff",
         "painel": "#111c2e" if tema_escuro else "#ffffff",
@@ -64,22 +67,34 @@ def desenhar_funcoes(funcoes, inicio, fim, mostrar=False, tema_escuro=True):
                               xytext=(10, -22), textcoords="offset points",
                               color=cores["vertice"], fontsize=9)
 
-    polinomios = [
-        funcao.polinomio if isinstance(funcao, Expressao) else funcao
-        for _, funcao in funcoes
-    ]
-    if len(polinomios) >= 2 and all(p is not None for p in polinomios[:2]):
-        situacao, intersecoes = calcular_intersecoes_polinomios(
-            polinomios[0], polinomios[1]
-        )
-        if situacao == "pontos":
-            for indice, (x, y) in enumerate(intersecoes):
-                if inicio <= x <= fim:
-                    eixo.scatter(x, y, color=cores["intersecao"], s=115,
-                                 zorder=7, label="Interseção f/g" if indice == 0 else None)
-                    eixo.annotate(f"({x:.2f}, {y:.2f})", (x, y),
-                                  xytext=(10, 12), textcoords="offset points",
-                                  color=cores["intersecao"], fontsize=9)
+    if intersecoes is None and len(funcoes) >= 2:
+        polinomios = [
+            funcao.polinomio if isinstance(funcao, Expressao) else funcao
+            for _, funcao in funcoes[:2]
+        ]
+        if all(p is not None for p in polinomios):
+            intersecoes = calcular_intersecoes_polinomios(*polinomios)
+
+    if intersecoes is not None and intersecoes[0] == "pontos":
+        pontos = [
+            (x, y) for x, y in intersecoes[1]
+            if inicio <= x <= fim and math.isfinite(x) and math.isfinite(y)
+        ]
+        for indice, (x, y) in enumerate(pontos):
+            eixo.scatter(
+                x, y, color=cores["intersecao"], s=100,
+                zorder=7,
+                label=(
+                    f"Interseção {par_intersecoes[0]}/{par_intersecoes[1]}"
+                    if indice == 0 else None
+                ),
+            )
+            if len(pontos) <= 6:
+                eixo.annotate(
+                    f"({x:.4f}, {y:.4f})", (x, y),
+                    xytext=(10, 12), textcoords="offset points",
+                    color=cores["intersecao"], fontsize=9,
+                )
 
     eixo.axhline(0, color=cores["texto"], alpha=0.55, linewidth=1)
     eixo.axvline(0, color=cores["texto"], alpha=0.55, linewidth=1)

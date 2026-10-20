@@ -4,7 +4,7 @@ Aplicação em **Python** para analisar, comparar e exportar gráficos matemáti
 
 ## Sobre o projeto
 
-O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adicionou um **cursor de precisão** para identificar pontos das curvas com seis casas decimais. A versão **2.8** permite clicar em raízes, vértices e interseções para aproximar o gráfico do ponto selecionado, com a possibilidade de restaurar a visualização. A versão **2.9** substitui a barra cinza padrão do Matplotlib por controles de navegação discretos e integrados ao tema da interface. A versão **3.0** introduz um painel de parâmetros recolhível para ampliar a área destinada ao gráfico sem perder as configurações.
+O Explorador de Funções permite visualizar **uma a cinco funções simultâneas**, definidas por coeficientes ou expressões matemáticas digitadas diretamente. A versão **2.7** adicionou um **cursor de precisão** para identificar pontos das curvas com seis casas decimais. A versão **2.8** permite clicar em raízes, vértices e interseções para aproximar o gráfico do ponto selecionado, com a possibilidade de restaurar a visualização. A versão **2.9** substitui a barra cinza padrão do Matplotlib por controles de navegação discretos e integrados ao tema da interface. A versão **3.0** introduziu um painel de parâmetros recolhível para ampliar a área do gráfico sem perder as configurações. A versão **3.1** permite selecionar qualquer par de funções ativas, localizar interseções e investigá-las com o zoom inteligente, inclusive quando as funções são expressões não polinomiais.
 
 ## Demonstração
 
@@ -22,7 +22,9 @@ O Explorador de Funções permite visualizar **uma a cinco funções simultânea
 - Exibição das coordenadas livres do mouse na barra inferior quando ele está no gráfico, mas longe das curvas.
 - O cursor ignora resultados indefinidos e não interfere nas ferramentas de zoom e movimentação.
 - Barra de rolagem lateral minimalista, utilizável com a roda do mouse e por arraste.
-- Raízes, vértices e interseções de **f(x) e g(x)** para polinômios de grau até 2.
+- **Interseções entre quaisquer duas funções ativas**, escolhidas entre `f(x)`, `g(x)`, `h(x)`, `i(x)` e `j(x)`, com resultado destacado no gráfico.
+- **Interseções numéricas de expressões**, incluindo casos como `sin(x)` e `cos(x)`, além dos cálculos analíticos entre polinômios de grau até 2.
+- Raízes e vértices de funções polinomiais de grau até 2.
 - Cálculo de discriminante e indicação do comportamento das funções aplicáveis.
 - Intervalo configurável, gráficos interativos e exportação em PNG.
 - Tratamento de entradas inválidas e preservação da versão de terminal.
@@ -38,6 +40,22 @@ O pequeno botão com seta fica na divisória entre os parâmetros e o gráfico:
 
 O botão também pode ser acionado com **Enter** ou **Espaço** quando recebe foco pelo teclado. A barra de rolagem do painel e os recursos matemáticos existentes continuam disponíveis normalmente.
 
+## Interseções avançadas — versão 3.1
+
+1. Configure **duas ou mais funções** e o intervalo do eixo horizontal.
+2. Na seção **INTERSEÇÕES ENTRE FUNÇÕES**, escolha a **Primeira** e a **Segunda** função. Por exemplo, `f` e `h`.
+3. Clique em **GERAR GRÁFICO**, se tiver editado algum campo, ou altere os seletores para atualizar automaticamente o resultado.
+4. As interseções calculadas aparecem como **pontos verdes** no gráfico e são listadas na análise matemática com **seis casas decimais**.
+5. Clique em um desses pontos para usar o **zoom inteligente**. Use **RESTAURAR VISÃO** para retornar ao enquadramento original.
+
+Exemplo com `f(x) = sin(x)` e `h(x) = cos(x)`, no intervalo `[-5, 5]`: o programa encontra aproximadamente três interseções, incluindo `(0.785398, 0.707107)`.
+
+Para dois polinômios de grau até 2, as interseções são calculadas **algebricamente**, respeitando o intervalo selecionado. Para os demais casos, o módulo `intersecoes.py` utiliza amostragem, **bisseção** e busca de mínimos locais da diferença entre as funções, verificando o resultado antes de exibi-lo. Isso também permite encontrar algumas tangências e evitar falsos pontos causados por assíntotas.
+
+O cálculo numérico é **aproximado e limitado ao intervalo configurado**; ele não garante detectar todas as interseções de funções muito oscilatórias ou em situações numericamente difíceis. São destacados até 60 pontos por análise, dos quais até 12 aparecem listados no painel. Resultados sem pontos encontrados não constituem prova matemática de inexistência de interseção.
+
+Ao deixar apenas uma função ativa, os seletores ficam desabilitados. Quando funções são removidas, a seleção é ajustada para manter um par válido, quando possível.
+
 ## Como usar o cursor de precisão
 
 1. Execute a interface e gere um gráfico.
@@ -50,11 +68,11 @@ Os valores exibidos são calculados a partir da função na posição horizontal
 ## Como usar o zoom inteligente
 
 1. Gere um gráfico com uma ou mais funções.
-2. Clique diretamente em um ponto notável desenhado (raiz, vértice ou interseção entre `f(x)` e `g(x)`).
+2. Clique diretamente em um ponto notável desenhado (raiz, vértice ou interseção do par selecionado).
 3. O gráfico será centralizado e ampliado em torno do ponto, com `x` e `y` exibidos com seis casas decimais.
 4. Clique novamente no ponto selecionado para ampliar mais, ou clique em **RESTAURAR VISÃO** para retornar aos limites originais.
 
-O clique funciona apenas perto dos pontos matematicamente calculados e atualmente visíveis, enquanto os modos **MOVER** e **ZOOM** estão desativados. As interseções automáticas continuam limitadas a `f(x)` e `g(x)` polinomiais de grau até 2, e as raízes e os vértices continuam sendo destacados apenas nos polinômios de grau até 2. A ampliação não aumenta a precisão numérica dos cálculos, apenas melhora a inspeção visual do ponto.
+O clique funciona apenas perto dos pontos matematicamente calculados e atualmente visíveis, enquanto os modos **MOVER** e **ZOOM** estão desativados. As interseções podem ser calculadas para qualquer par de funções ativas. Raízes e vértices continuam sendo destacados automaticamente apenas para polinômios de grau até 2. A ampliação não aumenta a precisão numérica dos cálculos, apenas melhora a inspeção visual do ponto.
 
 ## Controles de navegação da versão 2.9
 
@@ -86,6 +104,7 @@ Explorador-funcoes/
     ├── matematica.py
     ├── visualizacao.py
     ├── expressoes.py
+    ├── intersecoes.py
     ├── cursor_precisao.py
     └── interface.py
 ```
@@ -120,7 +139,7 @@ cd explorador-funcoes
 python interface.py
 ```
 
-Selecione de uma a cinco funções e escolha **Afim**, **Quadrática** ou **Expressão** para cada uma. Gere o gráfico e aproxime o mouse de uma curva para visualizar o cursor de precisão. A opção **SALVAR GRÁFICO** exporta apenas o gráfico para PNG.
+Selecione de uma a cinco funções e escolha **Afim**, **Quadrática** ou **Expressão** para cada uma. Na seção **INTERSEÇÕES ENTRE FUNÇÕES**, escolha as funções que deseja comparar. Gere o gráfico e aproxime o mouse de uma curva para visualizar o cursor de precisão. A opção **SALVAR GRÁFICO** exporta apenas o gráfico para PNG.
 
 A versão de terminal continua disponível para comparar duas funções afins:
 
@@ -146,21 +165,23 @@ Use `*` para multiplicar, como em `2*x`. Tanto `^` quanto `**` representam potê
 ## Organização do código
 
 - **`matematica.py`** — cálculos de raízes, discriminante, vértice e interseções.
-- **`visualizacao.py`** — desenho simultâneo de até cinco curvas e seus pontos notáveis.
+- **`visualizacao.py`** — desenho simultâneo de até cinco curvas e dos pontos de interseção do par selecionado.
+- **`intersecoes.py`** — cálculo analítico e busca numérica de interseções, com validação das soluções.
 - **`interface.py`** — painel recolhível, navegação minimalista, cursor de precisão, zoom inteligente e exportação.
 - **`expressoes.py`** — avaliação controlada das expressões matemáticas.
-- **`cursor_precisao.py`** — cálculo e apresentação das coordenadas durante o movimento do mouse.
+- **`cursor_precisao.py`** — módulo independente preservado no repositório; a interface utiliza seu próprio cursor integrado.
 - **`explorador.py`** — versão de terminal.
 
 ## Limitações atuais
 
-- As interseções automáticas consideram apenas **f(x)** e **g(x)** quando são polinômios de grau até 2.
-- Expressões não polinomiais são desenhadas e podem ser exploradas pelo cursor, mas ainda não contam com análise algébrica automática.
+- As interseções numéricas podem deixar de encontrar raízes ou tangências em funções muito oscilatórias ou com comportamento difícil, mesmo dentro do intervalo.
+- Somente o **par selecionado** tem suas interseções calculadas; cada análise mostra até 60 pontos.
+- Expressões não polinomiais podem ser analisadas numericamente quanto às interseções, mas ainda não possuem análise algébrica geral de raízes ou vértices.
 - Os valores apresentados possuem seis casas decimais de exibição, sujeitos à precisão numérica do Python.
 
 ## Próximos passos
 
-- Ampliar o cálculo de interseções para diferentes pares de funções, incluindo expressões não polinomiais, em uma atualização futura.
+- Ampliar a identificação de raízes de expressões não polinomiais e aprimorar o tratamento de descontinuidades.
 
 ## Autor
 
